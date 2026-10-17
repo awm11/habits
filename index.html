@@ -212,11 +212,40 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 .gate .later{min-height:48px;background:none;border:0;color:var(--muted);font-weight:700;text-decoration:underline}
 .gate .msg{color:var(--warn);min-height:1.4em}
 
+/* To do */
+.tadd{display:flex;gap:10px}
+.tadd input{flex:1;min-width:0;min-height:60px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);padding:0 16px;font-size:18px}
+.tadd input:focus{outline:none;border-color:var(--tick)}
+.tadd button{min-width:60px;min-height:60px;border-radius:var(--r);border:0;background:var(--tick);color:var(--surface);font-size:30px;font-weight:700;line-height:1}
+.tlist{display:flex;flex-direction:column;gap:10px}
+.trow{display:flex;align-items:center;gap:14px;min-height:66px;padding:12px 14px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);text-align:left;width:100%;
+  overflow:hidden;max-height:240px;transition:background .2s,border-color .2s,max-height .32s ease,opacity .32s ease,padding .32s ease,margin .32s ease,border-width .32s ease}
+.trow .tx{flex:1;min-width:0;font-size:18px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.tck{flex:none;width:36px;height:36px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;color:var(--surface);transition:background .2s,border-color .2s,transform .2s}
+.tck svg{width:22px;height:22px;opacity:0;transition:opacity .15s}
+.trow.flash{background:color-mix(in srgb, var(--tick) 28%, var(--surface));border-color:var(--tick);animation:tflash .65s ease}
+.trow.flash .tck{background:var(--tick);border-color:var(--tick);transform:scale(1.12)}
+.trow.flash .tck svg{opacity:1}
+.trow.gone{max-height:0;opacity:0;padding-block:0;margin-top:-10px;border-width:0}
+@keyframes tflash{0%{background:var(--surface)}35%{background:color-mix(in srgb, var(--tick) 55%, var(--surface))}100%{background:color-mix(in srgb, var(--tick) 28%, var(--surface))}}
+@media (prefers-reduced-motion: reduce){.trow,.tck{transition:none}.trow.flash{animation:none}}
+.tempty{color:var(--muted);text-align:center;padding:18px 8px}
+.dhead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;border:0;background:none;padding:0;width:100%;font-weight:700;color:var(--muted);font-size:16px}
+.dhead svg{width:20px;height:20px;transition:transform .2s}
+.dhead[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.drow{display:flex;align-items:center;gap:8px}
+.drow .trow{min-height:54px;padding:8px 12px;border-style:dashed;background:none}
+.drow .trow .tx{font-weight:400;font-size:16px;color:var(--muted);text-decoration:line-through}
+.drow .trow .tck{width:30px;height:30px;background:var(--tick);border-color:var(--tick)}
+.drow .trow .tck svg{opacity:1;width:18px;height:18px}
+.drow .del{flex:none;width:48px;height:48px;border-radius:12px;border:0;background:none;color:var(--muted);display:grid;place-items:center}
+.drow .del svg{width:20px;height:20px}
+
 /* Bottom nav */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:color-mix(in srgb, var(--surface) 92%, transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px);
   padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px))}
-.tabs nav{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tabs nav{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 .tabs button{position:relative;border:0;background:none;min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:13px;font-weight:700}
 .tabs button svg{width:26px;height:26px}
 .tabs button[aria-current="page"]{color:var(--ink)}
@@ -239,11 +268,13 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 <main class="wrap">
   <section class="view" id="v-today"></section>
   <section class="view" id="v-history" hidden></section>
+  <section class="view" id="v-todo" hidden></section>
   <section class="view" id="v-edit" hidden></section>
 </main>
 <div class="tabs"><nav aria-label="Sections">
   <button data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l2.7 2.7L16.5 9"/></svg>Today</button>
   <button data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17.5h2M11 17.5h2"/></svg>History<span class="dot" id="histdot" hidden></span></button>
+  <button data-tab="todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.5"/><path d="M4.9 7l.8.8 1.5-1.6"/><path d="M11 7h9M11 17h9"/><circle cx="6" cy="17" r="2.5"/></svg>To do</button>
   <button data-tab="edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h7M4 18h10"/><path d="M15.5 15.5l4.8-4.8a1.6 1.6 0 0 0-2.3-2.3l-4.8 4.8-.7 3z"/></svg>Habits</button>
 </nav></div>
 
@@ -336,6 +367,7 @@ const S = {
   config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
   months: {},          // "2026-10" -> { days: { "2026-10-16": { d:[full], t:[two-minute], n:"note" } } }
   reviews: { weeks:{} }, // "2026-10-12" (Monday) -> { keep, drop, easier }
+  todos: null,           // { items:[{ id, text, at, done? }] } — null until first loaded or seeded
   day: todayKey(),
   histMonth: monthOf(todayKey()),
   tab: 'today',
@@ -352,10 +384,11 @@ function loadLocal(){
     if (o.reviews && o.reviews.weeks) S.reviews = o.reviews;
     if (o.collapsed) S.collapsed = o.collapsed;
     if (o.lastBackup) S.lastBackup = o.lastBackup;
+    if (o.todos && Array.isArray(o.todos.items)) S.todos = o.todos;
   } catch(e) {}
 }
 function saveLocal(){
-  try { localStorage.setItem(LS, JSON.stringify({ config:S.config, months:S.months, reviews:S.reviews, collapsed:S.collapsed, lastBackup:S.lastBackup || null })); } catch(e) {}
+  try { localStorage.setItem(LS, JSON.stringify({ config:S.config, months:S.months, reviews:S.reviews, todos:S.todos, collapsed:S.collapsed, lastBackup:S.lastBackup || null })); } catch(e) {}
 }
 
 const habitsIn = cid => S.config.habits.filter(h => h.cat === cid);
@@ -466,6 +499,7 @@ function queueSave(docId){
 function bodyFor(docId){
   if (docId === 'config') return { v:S.config.v || 1, cats:S.config.cats, habits:S.config.habits };
   if (docId === 'reviews') return { weeks:S.reviews.weeks };
+  if (docId === 'todos') return { items:(S.todos && S.todos.items) || [] };
   return { days:(S.months[docId.slice(2)] || { days:{} }).days };
 }
 const docRef = id => store.m.doc(store.db, 'users', store.user.uid, 'data', id);
@@ -496,6 +530,16 @@ function mergeFirst(cloud){
   const weeks = store.dirty.has('reviews') ? { ...cw, ...S.reviews.weeks } : { ...S.reviews.weeks, ...cw };
   if (JSON.stringify(weeks) !== JSON.stringify(cw)) up.add('reviews');
   S.reviews = { weeks };
+  // To do: the cloud's list wins unless this device has unsynced changes, in which case both lists are combined.
+  const ct = cloud.todos && Array.isArray(cloud.todos.items) ? cloud.todos.items : null;
+  const lt = (S.todos && S.todos.items) || [];
+  if (ct && !store.dirty.has('todos')) S.todos = { items:ct };
+  else {
+    const byId = new Map((ct || []).map(t => [t.id, t]));
+    lt.forEach(t => byId.set(t.id, t));
+    S.todos = { items:[...byId.values()] };
+    if (JSON.stringify(S.todos.items) !== JSON.stringify(ct || [])) up.add('todos');
+  }
   const months = new Set([...Object.keys(S.months), ...Object.keys(cloud).filter(k => k.startsWith('m-')).map(k => k.slice(2))]);
   for (const m of months) {
     const cd = (cloud['m-' + m] && cloud['m-' + m].days) || {}, ld = (S.months[m] && S.months[m].days) || {};
@@ -528,6 +572,9 @@ function onSnap(snap){
     } else if (d.id === 'reviews') {
       if (JSON.stringify(data.weeks || {}) === JSON.stringify(S.reviews.weeks)) continue;
       S.reviews = { weeks:data.weeks || {} }; changed = true;
+    } else if (d.id === 'todos') {
+      if (!Array.isArray(data.items) || JSON.stringify(data.items) === JSON.stringify((S.todos || {}).items || [])) continue;
+      S.todos = { items:data.items }; changed = true;
     } else if (d.id.startsWith('m-')) {
       const m = d.id.slice(2);
       if (JSON.stringify(data.days || {}) === JSON.stringify((S.months[m] || {}).days || {})) continue;
@@ -589,7 +636,7 @@ window.addEventListener('offline', () => { if (store.user && store.dirty.size) s
 
 /* ---------- rendering ---------- */
 const $ = s => document.querySelector(s);
-const V = { today:$('#v-today'), history:$('#v-history'), edit:$('#v-edit') };
+const V = { today:$('#v-today'), history:$('#v-history'), todo:$('#v-todo'), edit:$('#v-edit') };
 
 function render(fromRemote){
   const ae = document.activeElement;
@@ -598,6 +645,7 @@ function render(fromRemote){
     if (S.tab === 'today') renderToday();
     if (S.tab === 'history') renderHistory();
     if (S.tab === 'edit') renderEdit();
+    if (S.tab === 'todo' && !document.querySelector('.trow.flash')) renderTodo();
   }
   updateDot();
 }
@@ -837,6 +885,65 @@ function renderSyncLine(){
   el.innerHTML = '<i></i>' + esc(!lb ? 'Saved on this phone. You haven’t saved a backup yet.'
     : `Saved on this phone. Last backup ${age === 0 ? 'today' : age === 1 ? 'yesterday' : age + ' days ago'}.`);
 }
+/* ---------- To do ---------- */
+const STARTER_TODOS = [
+  { id:'td-start-1', text:'Tick this off to see what happens', at:'2026-01-01T00:00:02.000Z' },
+  { id:'td-start-2', text:'Type your own to-do in the box above', at:'2026-01-01T00:00:01.000Z' },
+  { id:'td-start-3', text:'Save a backup of your habits (Habits tab)', at:'2026-01-01T00:00:00.000Z' }
+];
+const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const todoItems = () => (S.todos && S.todos.items) || [];
+function renderTodo(){
+  const items = todoItems();
+  const open = items.filter(t => !t.done).sort((a, b) => b.at.localeCompare(a.at));
+  const done = items.filter(t => t.done).sort((a, b) => b.done.localeCompare(a.done));
+  const showDone = !!S.collapsed['todo-done'];
+  const draft = $('#tnew') ? $('#tnew').value : '';
+  V.todo.innerHTML = `
+    <div><h1 style="font-size:32px;font-weight:800;letter-spacing:-.02em">To do</h1>
+      <p class="hint">${open.length ? `${open.length} to go. Tap one when it's done.` : 'All clear.'}</p></div>
+    <form class="tadd" id="tform" autocomplete="off">
+      <input id="tnew" placeholder="Add a to-do…" aria-label="New to-do" enterkeyhint="done" maxlength="200">
+      <button type="submit" aria-label="Add to-do">+</button>
+    </form>
+    <div class="tlist">${open.length ? open.map(t => `
+      <button class="trow" data-tdone="${t.id}" aria-label="Mark done: ${esc(t.text)}"><span class="tck">${TICK}</span><span class="tx">${esc(t.text)}</span></button>`).join('')
+      : `<p class="tempty">Nothing to do. Add something above.</p>`}</div>
+    ${done.length ? `<div>
+      <button class="dhead" data-tshow aria-expanded="${showDone}"><span>Done · ${done.length}</span>${I.down}</button>
+      ${showDone ? `<div class="tlist">${done.slice(0, 50).map(t => `
+        <div class="drow"><button class="trow" data-tundo="${t.id}" aria-label="Bring back: ${esc(t.text)}"><span class="tck">${TICK}</span><span class="tx">${esc(t.text)}</span></button>
+          <button class="del" data-tdel="${t.id}" aria-label="Delete ${esc(t.text)}">${I.bin}</button></div>`).join('')}
+        <button class="sbtn" data-tclear style="align-self:flex-start;margin-top:4px">Clear done</button></div>` : ''}
+    </div>` : ''}`;
+  if (draft) $('#tnew').value = draft;
+}
+function saveTodos(){ queueSave('todos'); }
+function addTodo(text){
+  text = text.trim(); if (!text) return;
+  if (!S.todos) S.todos = { items:[] };
+  S.todos.items.push({ id:uid('td'), text, at:new Date().toISOString() });
+  saveTodos(); renderTodo(); $('#tnew').focus();
+}
+function completeTodo(id, row){
+  const t = todoItems().find(x => x.id === id); if (!t || t.done || row.classList.contains('flash')) return;
+  t.done = new Date().toISOString(); saveTodos(); buzz(15);
+  row.classList.add('flash');
+  const fast = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(() => row.classList.add('gone'), fast ? 250 : 700);
+  setTimeout(() => { row.classList.remove('flash'); if (!document.querySelector('.trow.flash') && S.tab === 'todo') keepScroll(renderTodo); }, fast ? 300 : 1050);
+}
+V.todo.addEventListener('submit', e => { e.preventDefault(); addTodo($('#tnew').value); });
+V.todo.addEventListener('click', e => {
+  const d = e.target.closest('[data-tdone]'); if (d) { completeTodo(d.dataset.tdone, d); return; }
+  const u = e.target.closest('[data-tundo]');
+  if (u) { const t = todoItems().find(x => x.id === u.dataset.tundo); if (t) { delete t.done; saveTodos(); keepScroll(renderTodo); } return; }
+  const x = e.target.closest('[data-tdel]');
+  if (x) { S.todos.items = todoItems().filter(t => t.id !== x.dataset.tdel); saveTodos(); keepScroll(renderTodo); return; }
+  if (e.target.closest('[data-tclear]')) { S.todos.items = todoItems().filter(t => !t.done); saveTodos(); keepScroll(renderTodo); return; }
+  if (e.target.closest('[data-tshow]')) { S.collapsed['todo-done'] = !S.collapsed['todo-done']; saveLocal(); keepScroll(renderTodo); }
+});
+
 function setTab(tab){
   S.tab = tab;
   for (const [k, el] of Object.entries(V)) el.hidden = k !== tab;
@@ -936,7 +1043,7 @@ V.history.addEventListener('input', e => {
 
 /* ---------- backup export ---------- */
 const backupJSON = () => JSON.stringify({ app:'daily-awesomeness', format:1, exportedAt:new Date().toISOString(),
-  config:S.config, months:S.months, reviews:S.reviews });
+  config:S.config, months:S.months, reviews:S.reviews, todos:S.todos });
 function doExport(){
   const name = `daily-awesomeness-backup-${todayKey()}.json`;
   const a = document.createElement('a');
@@ -963,6 +1070,7 @@ function stageImport(text){
 function applyImport(){
   const o = pendingImport; if (!o) return;
   S.config = o.config; S.months = o.months || {}; S.reviews = (o.reviews && o.reviews.weeks) ? o.reviews : { weeks:{} };
+  if (o.todos && Array.isArray(o.todos.items)) { S.todos = o.todos; queueSave('todos'); }
   migrate(S.config); pendingImport = null; S.openHabit = null;
   queueSave('config'); queueSave('reviews'); Object.keys(S.months).forEach(m => queueSave('m-' + m));
   renderEdit(); updateDot();
@@ -1064,6 +1172,7 @@ document.addEventListener('visibilitychange', () => {
 
 loadLocal();
 if (migrate(S.config)) saveLocal();
+if (!S.todos) { S.todos = { items:JSON.parse(JSON.stringify(STARTER_TODOS)) }; saveLocal(); }
 setTab('today');
 initCloud();
 $('#gate-signin').addEventListener('click', signIn);
