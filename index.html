@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eceef2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e0f12" media="(prefers-color-scheme: dark)">
+<meta name="description" content="A big-button daily habit tracker.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Awesomeness">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Daily Awesomeness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap">
+<style>
+/* Layout: one thumb-width column; day header + week strip, then big tap tiles grouped by category; fixed bottom tab bar. */
+:root{
+  --bg:#eceef2; --surface:#ffffff; --surface-2:#e0e3e9; --ink:#14161b; --muted:#596070; --line:#cfd3db;
+  --tick:#2e8b4a; --warn:#b25a00;
+  --cat-red:#cf3f35; --cat-green:#2b8a3c; --cat-blue:#2c5fd4; --cat-violet:#7748cf;
+  --cat-amber:#b8700c; --cat-teal:#0f7f79; --cat-pink:#be347e;
+  --font-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r:14px; --tap:60px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f12; --surface:#191b20; --surface-2:#252830; --ink:#ebedf1; --muted:#99a0ad; --line:#2e323a;
+  --tick:#6fd07e; --warn:#ffad4d;
+  --cat-red:#ff6e61; --cat-green:#6fd07e; --cat-blue:#73a0ff; --cat-violet:#b48fff;
+  --cat-amber:#f2b24c; --cat-teal:#4fd0c4; --cat-pink:#ff7cba;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e0f12; --surface:#191b20; --surface-2:#252830; --ink:#ebedf1; --muted:#99a0ad; --line:#2e323a;
+  --tick:#6fd07e; --warn:#ffad4d;
+  --cat-red:#ff6e61; --cat-green:#6fd07e; --cat-blue:#73a0ff; --cat-violet:#b48fff;
+  --cat-amber:#f2b24c; --cat-teal:#4fd0c4; --cat-pink:#ff7cba;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top, 0px);padding-bottom:env(safe-area-inset-bottom, 0px)}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.4;-webkit-tap-highlight-color:transparent;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+:focus-visible{outline:3px solid var(--tick);outline-offset:2px}
+.wrap{max-width:640px;margin:0 auto;padding-block:14px calc(96px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;gap:18px}
+.view{display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
+.eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.iconbtn{width:var(--tap);height:var(--tap);border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none}
+.iconbtn svg{width:26px;height:26px}
+.iconbtn:active{transform:scale(.94)}
+.hint{font-size:15px;color:var(--muted);margin:0}
+
+/* Day header */
+.dayhead{display:flex;align-items:center;gap:10px}
+.dayname{flex:1;min-width:0;text-align:center}
+.dayname h1{font-size:clamp(30px,8.5vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.dayname p{margin:4px 0 0;color:var(--muted);font-size:16px}
+.todaylink{border:0;background:none;color:var(--tick);font-weight:700;padding:6px 10px;margin-top:2px;min-height:36px}
+
+.scorecard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.scorerow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.scorenum{font-family:var(--font-display);font-size:56px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.scorelbl{color:var(--muted)}
+.scorelbl b{color:var(--ink)}
+.tally{display:flex;gap:3px;height:12px}
+.tally span{flex:1;border-radius:3px;background:var(--surface-2)}
+.tally span.on{background:var(--c)}
+.tally span.half{background:color-mix(in srgb, var(--c) 45%, var(--surface-2))}
+
+/* Week strip */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.wd{border:1px solid transparent;background:none;border-radius:12px;padding:6px 0 8px;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:84px}
+.wd .l{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.06em}
+.wd .n{font-variant-numeric:tabular-nums;font-weight:700}
+.wd .bar{width:60%;height:28px;display:flex;align-items:flex-end;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.wd .bar i{display:block;width:100%;background:var(--tick);border-radius:5px 5px 0 0}
+.wd.sel{background:var(--surface);border-color:var(--ink)}
+.wd.today .n{color:var(--tick)}
+.cta{border:1px solid var(--tick);background:color-mix(in srgb, var(--tick) 12%, var(--surface));border-radius:12px;min-height:52px;font-weight:700;padding:0 16px;text-align:left}
+
+/* Categories + tiles */
+.cat{display:flex;flex-direction:column;gap:10px}
+.cathead{display:flex;align-items:center;gap:10px;border:0;background:none;padding:6px 2px;min-height:44px;text-align:left;width:100%}
+.cathead .ht{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.cathead .cn{font-family:var(--font-display);font-size:21px;font-weight:700;color:var(--c);line-height:1.15}
+.cathead .ident{font-style:italic;color:var(--muted);font-size:15px;line-height:1.3}
+.cathead .cnt{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:700}
+.cathead svg{width:20px;height:20px;color:var(--muted);transition:transform .2s;flex:none}
+.cat.closed .cathead svg{transform:rotate(-90deg)}
+.cat.closed .tiles{display:none}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:520px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile{min-height:88px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);padding:12px 12px 10px 14px;display:flex;flex-direction:column;gap:5px;text-align:left;touch-action:manipulation;
+  transition:background .15s,border-color .15s,transform .1s,opacity .15s;-webkit-touch-callout:none}
+.tile:active{transform:scale(.97)}
+.tile .top{display:flex;align-items:flex-start;gap:10px}
+.tile .nm{flex:1;min-width:0;font-weight:700;font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.tile .cue{font-size:14px;color:var(--muted);line-height:1.25;overflow-wrap:anywhere}
+.tile .ck{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center}
+.tile .ck svg{width:18px;height:18px;opacity:0}
+.tile .st{margin-top:auto;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.25}
+.tile.done{border-color:var(--c);background:color-mix(in srgb, var(--c) 16%, var(--surface))}
+.tile.done .ck{background:var(--c);border-color:var(--c);color:var(--surface)}
+.tile.done .ck svg{opacity:1}
+.tile.done .st{color:var(--ink)}
+.tile.tiny{border-style:dashed;border-color:var(--c);background:color-mix(in srgb, var(--c) 7%, var(--surface))}
+.tile.tiny .ck{border-color:var(--c);color:var(--c)}
+.tile.tiny .ck svg{opacity:1;width:14px;height:14px}
+.tile.tiny .st{color:var(--ink)}
+.tile.nudge{border-color:var(--warn)}
+.tile.nudge .st{color:var(--warn);font-weight:700}
+.tile.rest{opacity:.6}
+.tile.pressing{transform:scale(.95);border-style:dashed;border-color:var(--c)}
+
+.note{display:flex;flex-direction:column;gap:8px}
+textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);padding:12px 14px;line-height:1.4}
+
+/* History + check-in */
+.checkin{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.checkin.due{border:2px solid var(--tick)}
+.checkin h2{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.checkin textarea{min-height:64px;background:var(--bg)}
+.checkin label{display:flex;flex-direction:column;gap:6px;font-weight:700}
+.wksum{margin:0;color:var(--muted)}
+.wksum b{color:var(--ink)}
+.prev{border-left:3px solid var(--line);padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:4px;font-size:15px}
+.prev span{color:var(--muted)}
+.monthhead{display:flex;align-items:center;gap:10px}
+.monthhead h1{flex:1;text-align:center;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal .dow{text-align:center;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.06em;padding-bottom:2px}
+.cal button{aspect-ratio:1;max-width:100%;border-radius:10px;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;
+  background:color-mix(in srgb, var(--tick) var(--p,0%), var(--surface))}
+.cal button .dn{font-size:12px;color:var(--muted)}
+.cal button .sc{font-weight:800;font-variant-numeric:tabular-nums;font-size:17px;line-height:1.1}
+.cal button.hot .dn,.cal button.hot .sc{color:var(--bg)}
+.cal button.istoday{border:2px solid var(--ink)}
+.cal button.fut{opacity:.45}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-family:var(--font-display);font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+.hlist{display:flex;flex-direction:column;gap:8px}
+.hrow{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:4px 10px;align-items:center}
+.hrow .hn{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow .hc{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.hrow .hb{grid-column:1/-1;height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.hrow .hb i{display:block;height:100%;background:var(--c);border-radius:4px}
+
+/* Editor */
+.ecat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px}
+.ecathead{display:flex;gap:8px;align-items:center}
+.swatch{width:48px;height:48px;border-radius:12px;border:2px solid var(--line);background:var(--c);flex:none}
+.ecathead input{flex:1;min-width:0;font-family:var(--font-display);font-weight:700;font-size:19px;color:var(--c)}
+.field{min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:0 12px;width:100%;min-width:0}
+.identfield{font-style:italic}
+.erow{display:flex;gap:6px;align-items:stretch;padding-top:8px;border-top:1px solid var(--line)}
+.esum{flex:1;min-width:0;min-height:56px;border:0;background:none;text-align:left;display:flex;align-items:center;gap:8px;padding:0 4px}
+.esum .tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.esum .en{font-weight:700;overflow-wrap:anywhere}
+.esum .es{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.esum svg{width:20px;height:20px;color:var(--muted);flex:none;transition:transform .2s}
+.esum[aria-expanded="true"] svg{transform:rotate(180deg)}
+.edetail{display:flex;flex-direction:column;gap:12px;background:var(--bg);border-radius:12px;padding:12px}
+.edetail .field{background:var(--surface)}
+.edetail label,.fgroup{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:15px}
+.edetail label small,.fgroup small{font-weight:400;color:var(--muted);font-size:13px}
+.edetail select{min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:0 8px;width:100%}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
+.seg button{min-height:44px;border:0;border-radius:9px;background:none;font-weight:700;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper output{font-family:var(--font-display);font-size:26px;font-weight:800;min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
+.daypick{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.daypick button{min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:700}
+.daypick button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.erowbtns{display:flex;gap:6px;justify-content:space-between}
+.sbtn{min-width:48px;min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--bg);display:grid;place-items:center;padding:0 12px;font-weight:700}
+.edetail .sbtn{background:var(--surface)}
+.sbtn svg{width:22px;height:22px}
+.sbtn:disabled{opacity:.35}
+.sbtn.danger{color:var(--cat-red)}
+.sbtn.armed{background:var(--cat-red);color:var(--surface);border-color:var(--cat-red)}
+.addbtn{min-height:52px;border-radius:12px;border:2px dashed var(--line);background:none;font-weight:700;color:var(--muted)}
+.addbtn.big{min-height:60px;color:var(--ink)}
+.sync{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sync i{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.sync.ok i{background:var(--tick)}
+.sync.warn i{background:var(--warn)}
+
+/* Sign-in screen shown on opening when not signed in */
+.gate{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;
+  padding:max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.gate .box{width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px;text-align:center}
+.gate img{width:88px;height:88px;border-radius:22px;margin:0 auto}
+.gate h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.gate p{margin:0;color:var(--muted)}
+.gate .gbtn{min-height:60px;border-radius:14px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:18px;display:flex;align-items:center;justify-content:center;gap:12px}
+.gate .gbtn svg{width:22px;height:22px}
+.gate .later{min-height:48px;background:none;border:0;color:var(--muted);font-weight:700;text-decoration:underline}
+.gate .msg{color:var(--warn);min-height:1.4em}
+
+/* Bottom nav */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:color-mix(in srgb, var(--surface) 92%, transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px);
+  padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px))}
+.tabs nav{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tabs button{position:relative;border:0;background:none;min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:13px;font-weight:700}
+.tabs button svg{width:26px;height:26px}
+.tabs button[aria-current="page"]{color:var(--ink)}
+.tabs button[aria-current="page"] svg{color:var(--tick)}
+.tabs .dot{position:absolute;top:12px;left:calc(50% + 10px);width:10px;height:10px;border-radius:50%;background:var(--tick);border:2px solid var(--surface)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="gate" id="gate" hidden>
+  <div class="box">
+    <img src="icons/icon-192.png" alt="">
+    <h1>Daily Awesomeness</h1>
+    <p>Sign in with Google to keep your habits in sync on your phone and computer.</p>
+    <button class="gbtn" id="gate-signin"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.6l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.8l-8 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button>
+    <p class="msg" id="gate-msg" role="status"></p>
+    <button class="later" id="gate-later">Not now</button>
+  </div>
+</div>
+<main class="wrap">
+  <section class="view" id="v-today"></section>
+  <section class="view" id="v-history" hidden></section>
+  <section class="view" id="v-edit" hidden></section>
+</main>
+<div class="tabs"><nav aria-label="Sections">
+  <button data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l2.7 2.7L16.5 9"/></svg>Today</button>
+  <button data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17.5h2M11 17.5h2"/></svg>History<span class="dot" id="histdot" hidden></span></button>
+  <button data-tab="edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h7M4 18h10"/><path d="M15.5 15.5l4.8-4.8a1.6 1.6 0 0 0-2.3-2.3l-4.8 4.8-.7 3z"/></svg>Habits</button>
+</nav></div>
+
+<script>
+(() => {
+/* ---------- icons ---------- */
+const I = {
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  left:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  right:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+  bin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg>'
+};
+const COLORS = ['red','green','blue','violet','amber','teal','pink'];
+
+/* ---------- defaults: a generic starter set (each person edits it to fit) ---------- */
+const mk = (cat, names) => names.map(n => ({ id: 'h-' + n.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''), name: n, cat }));
+// Used only to upgrade configs saved by the very first version of the app.
+const SUGGEST_IDENTITY = {
+  'c-ex': "I'm someone who moves every day",
+  'c-si': "I'm someone who keeps learning and making things",
+  'c-eb': "I'm someone who keeps life in good order",
+  'c-sc': "I'm someone who looks after myself and my people"
+};
+const SUGGEST_FREQ = { 'h-park-run': { t:'days', days:[6] }, 'h-bake-sourdough': { t:'times', n:1 } };
+const H = (cat, name, cue, tiny, freq) => {
+  const h = { id: 'h-' + name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''), name, cat };
+  if (cue) h.cue = cue; if (tiny) h.tiny = tiny; if (freq) h.freq = { t:'times', n:freq };
+  return h;
+};
+const DEFAULT_CONFIG = {
+  v: 2,
+  cats: [
+    { id:'c-ex', name:'Move', color:'red', identity:"I'm someone who moves every day" },
+    { id:'c-si', name:'Learn & create', color:'green', identity:"I'm someone who keeps learning and making things" },
+    { id:'c-eb', name:'Home & admin', color:'blue', identity:"I'm someone who keeps life in good order" },
+    { id:'c-sc', name:'Look after yourself', color:'violet', identity:"I'm someone who looks after myself and my people" }
+  ],
+  habits: [
+    H('c-ex', 'Stretch', 'After I get out of bed', 'One stretch'),
+    H('c-ex', 'Walk 20 minutes', 'After lunch', 'Walk to the end of the road'),
+    H('c-ex', 'Workout', 'After work', 'Put my trainers on', 3),
+    H('c-ex', 'Run', 'Before breakfast', 'Run for five minutes', 2),
+    H('c-si', 'Read', 'When I get into bed', 'Read one page'),
+    H('c-si', 'Practise a skill', 'After dinner', 'Practise for two minutes', 4),
+    H('c-si', 'Learn something new', 'With my morning coffee', 'Watch one short video', 3),
+    H('c-si', 'Make something creative', 'On Sunday afternoon', 'Open the sketchbook', 1),
+    H('c-si', 'Journal', 'Before I turn the light off', 'Write one line'),
+    H('c-eb', 'Tidy for 10 minutes', 'After dinner', 'Put one thing away'),
+    H('c-eb', 'Plan tomorrow', 'Before I shut the laptop', "Write tomorrow's top task"),
+    H('c-eb', 'Clear the inbox', 'After my first coffee', 'Archive one email', 3),
+    H('c-eb', 'Cook a proper meal', 'When I get home', 'Chop one vegetable', 3),
+    H('c-eb', 'Fix or sort one thing', 'On Saturday morning', 'Write down what needs fixing', 1),
+    H('c-sc', '8 hours sleep', 'After I brush my teeth', 'Put my phone on charge outside the bedroom'),
+    H('c-sc', 'Drink water', 'After I make a hot drink', 'One glass'),
+    H('c-sc', 'Get outside', 'After lunch', 'Step outside for a minute'),
+    H('c-sc', 'Meditate', 'After I get dressed', 'Three slow breaths'),
+    H('c-sc', "Under 1 hour's phone time", 'When I pick up my phone', 'Put it in another room for 10 minutes'),
+    H('c-sc', 'Message a friend or family', 'On my commute', 'Send one message', 3)
+  ]
+};
+function migrate(cfg){
+  if ((cfg.v || 1) >= 2) return false;
+  cfg.cats.forEach(c => { if (c.identity === undefined && SUGGEST_IDENTITY[c.id]) c.identity = SUGGEST_IDENTITY[c.id]; });
+  cfg.habits.forEach(h => { if (!h.freq && SUGGEST_FREQ[h.id]) h.freq = JSON.parse(JSON.stringify(SUGGEST_FREQ[h.id])); });
+  cfg.v = 2;
+  return true;
+}
+
+/* ---------- dates ---------- */
+const pad = n => String(n).padStart(2,'0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (k, n) => { const d = fromKey(k); d.setDate(d.getDate()+n); return keyOf(d); };
+const monthOf = k => k.slice(0,7);
+const todayKey = () => keyOf(new Date());
+const monIdx = k => (fromKey(k).getDay()+6)%7;           // Mon=0 … Sun=6
+const weekStart = k => addDays(k, -monIdx(k));
+const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY3 = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + '-' + Math.random().toString(36).slice(2,8);
+const shortDate = k => { const d = fromKey(k); return `${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`; };
+
+/* ---------- state ---------- */
+const LS = 'daily-awesomeness-v1';
+const S = {
+  config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
+  months: {},          // "2026-10" -> { days: { "2026-10-16": { d:[full], t:[two-minute], n:"note" } } }
+  reviews: { weeks:{} }, // "2026-10-12" (Monday) -> { keep, drop, easier }
+  day: todayKey(),
+  histMonth: monthOf(todayKey()),
+  tab: 'today',
+  collapsed: {},
+  openHabit: null,
+  sync: 'local'
+};
+function loadLocal(){
+  try {
+    const raw = localStorage.getItem(LS); if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o.config && Array.isArray(o.config.habits) && Array.isArray(o.config.cats)) S.config = o.config;
+    if (o.months) S.months = o.months;
+    if (o.reviews && o.reviews.weeks) S.reviews = o.reviews;
+    if (o.collapsed) S.collapsed = o.collapsed;
+    if (o.lastBackup) S.lastBackup = o.lastBackup;
+  } catch(e) {}
+}
+function saveLocal(){
+  try { localStorage.setItem(LS, JSON.stringify({ config:S.config, months:S.months, reviews:S.reviews, collapsed:S.collapsed, lastBackup:S.lastBackup || null })); } catch(e) {}
+}
+
+const habitsIn = cid => S.config.habits.filter(h => h.cat === cid);
+const habitMap = () => Object.fromEntries(S.config.habits.map(h => [h.id, h]));
+const catMap = () => Object.fromEntries(S.config.cats.map(c => [c.id, c]));
+const getDay = k => { const r = S.months[monthOf(k)]?.days?.[k]; return r ? { d:r.d||[], t:r.t||[], n:r.n||'' } : { d:[], t:[], n:'' }; };
+function putDay(k, rec){
+  const m = monthOf(k);
+  if (!S.months[m]) S.months[m] = { days:{} };
+  if (!rec.d.length && !rec.t.length && !rec.n) delete S.months[m].days[k];
+  else { const o = { d:rec.d }; if (rec.t.length) o.t = rec.t; if (rec.n) o.n = rec.n; S.months[m].days[k] = o; }
+  queueSave('m-' + m);
+}
+const doneState = (k, id) => { const r = getDay(k); return r.d.includes(id) ? 'full' : r.t.includes(id) ? 'tiny' : null; };
+const isDone = (k, id) => !!doneState(k, id);
+const votes = (k, hm = habitMap()) => { const r = getDay(k); return r.d.filter(id => hm[id]).length + r.t.filter(id => hm[id]).length; };
+
+/* ---------- Atomic Habits logic: frequency, never-miss-twice, chains ---------- */
+const freqOf = h => h.freq || { t:'daily' };
+const isDue = (h, k) => { const f = freqOf(h); return f.t === 'days' ? (f.days||[]).includes(fromKey(k).getDay()) : true; };
+const weekCount = (h, k) => { const m = weekStart(k); let c = 0; for (let i = 0; i < 7; i++) if (isDone(addDays(m,i), h.id)) c++; return c; };
+// A chain only breaks after two misses in a row, so one slip never wipes out your progress.
+function chain(h, k){
+  const f = freqOf(h); let n = 0, misses = 0;
+  if (f.t === 'times') {
+    let w = weekStart(k); if (weekCount(h, w) < f.n) w = addDays(w, -7);
+    for (let i = 0; i < 160; i++) { if (weekCount(h, w) >= f.n) { n++; misses = 0; } else if (++misses >= 2) break; w = addDays(w, -7); }
+    return { n, unit:'week' };
+  }
+  let cur = isDone(k, h.id) ? k : addDays(k, -1);
+  for (let i = 0; i < 400; i++) {
+    if (isDone(cur, h.id)) { n++; misses = 0; }
+    else if (isDue(h, cur)) { if (++misses >= 2) break; }
+    cur = addDays(cur, -1);
+  }
+  return { n, unit:'day' };
+}
+function prevDue(h, k){ let c = addDays(k, -1); for (let i = 0; i < 7; i++) { if (isDue(h, c)) return c; c = addDays(c, -1); } return null; }
+function doneRecently(h, k, days){ for (let i = 1; i <= days; i++) if (isDone(addDays(k, -i), h.id)) return true; return false; }
+// What the small line at the bottom of a tile says, and how the tile looks.
+function tileStatus(h, k){
+  const f = freqOf(h), state = doneState(k, h.id), t = todayKey();
+  if (state === 'tiny') return { cls:'', text: 'Showed up' + (h.tiny ? ': ' + h.tiny : '') };
+  if (f.t === 'times') {
+    const c = weekCount(h, k), ch = chain(h, k);
+    if (c >= f.n) return { cls:'', text: 'Done for the week' + (ch.n >= 2 ? ` · ${ch.n}-week streak` : '') };
+    if (state) return { cls:'', text: `${c} of ${f.n} this week` };
+    const daysLeft = 7 - monIdx(k), need = f.n - c;
+    if (k <= t && need >= daysLeft) return { cls:'nudge', text: need === 1 ? 'Today keeps your weekly target' : `${need} to go, ${daysLeft} days left` };
+    return { cls:'', text: `${c} of ${f.n} this week` };
+  }
+  const ch = chain(h, k);
+  if (state) return { cls:'', text: ch.n >= 2 ? `${ch.n}-day streak` : '' };
+  if (!isDue(h, k)) return { cls:'rest', text: 'Not today' };
+  if (k <= t) {
+    const p = prevDue(h, k);
+    if (p && !isDone(p, h.id)) {
+      let m = 0, c = p;
+      while (m < 60) { if (isDone(c, h.id)) break; if (isDue(h, c)) m++; c = addDays(c, -1); }
+      const last = f.t === 'daily' ? 'yesterday' : 'last time';
+      if (m === 1 && doneRecently(h, k, 14)) return { cls:'nudge', text: `Missed ${last}. Don't miss twice` };
+      if (m >= 2 && doneRecently(h, k, 30)) return { cls:'nudge', text: 'Back on it today' };
+    }
+  }
+  return { cls:'', text: ch.n >= 2 ? `${ch.n}-day streak going` : '' };
+}
+function freqLabel(h){
+  const f = freqOf(h);
+  if (f.t === 'times') return f.n === 1 ? 'Once a week' : `${f.n} times a week`;
+  if (f.t === 'days') { const d = [...(f.days||[])].sort((a,b) => (a+6)%7 - (b+6)%7); return d.length ? d.map(x => DAY3[x]).join(', ') : 'No days chosen'; }
+  return 'Every day';
+}
+
+/* ---------- weekly check-in ---------- */
+// Fri–Sun: reflect on this week. Mon–Thu: last week's check-in is still open.
+const checkinWeek = () => { const t = todayKey(); return monIdx(t) >= 4 ? weekStart(t) : addDays(weekStart(t), -7); };
+const review = w => S.reviews.weeks[w] || { keep:'', drop:'', easier:'' };
+const reviewEmpty = r => !(r.keep || r.drop || r.easier);
+
+/* ---------- saving: on this device, plus Google sign-in sync ---------- */
+// Firebase web config. These values are public by design; access is locked down by Firestore rules (each person can only read/write users/<their uid>).
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAON87NZuiIOuxdYzWGpNxvi_gXMzN2DxY",
+  authDomain: "habits-d14c3.firebaseapp.com",
+  projectId: "habits-d14c3",
+  storageBucket: "habits-d14c3.firebasestorage.app",
+  messagingSenderId: "617502759277",
+  appId: "1:617502759277:web:383cc66a3d7d07a506e264"
+};
+const FB_URL = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const DIRTY_LS = LS + ':unsynced';
+const store = { m:null, auth:null, db:null, user:null, unsub:null, ready:false, timers:{}, writing:{}, ver:{}, dirty:new Set(), failed:false };
+try { (JSON.parse(localStorage.getItem(DIRTY_LS)) || []).forEach(id => store.dirty.add(id)); } catch(e) {}
+const saveDirty = () => { try { localStorage.setItem(DIRTY_LS, JSON.stringify([...store.dirty])); } catch(e) {} };
+const clone = o => JSON.parse(JSON.stringify(o));
+
+// Every change is saved on the device straight away, and marked unsynced until the cloud confirms it.
+function queueSave(docId){
+  saveLocal();
+  if (!docId) return;
+  store.dirty.add(docId); saveDirty();
+  store.ver[docId] = (store.ver[docId] || 0) + 1;
+  if (!store.user || !store.ready) return;
+  setSync('syncing');
+  clearTimeout(store.timers[docId]);
+  store.timers[docId] = setTimeout(() => flush(docId), 700);
+}
+function bodyFor(docId){
+  if (docId === 'config') return { v:S.config.v || 1, cats:S.config.cats, habits:S.config.habits };
+  if (docId === 'reviews') return { weeks:S.reviews.weeks };
+  return { days:(S.months[docId.slice(2)] || { days:{} }).days };
+}
+const docRef = id => store.m.doc(store.db, 'users', store.user.uid, 'data', id);
+async function flush(docId){
+  if (!store.user || !store.ready) return;
+  if (store.writing[docId]) { store.timers[docId] = setTimeout(() => flush(docId), 300); return; }
+  store.writing[docId] = true;
+  const v = store.ver[docId], who = store.user.uid;
+  try {
+    await store.m.setDoc(docRef(docId), clone(bodyFor(docId)));
+    if (store.ver[docId] === v && store.user && store.user.uid === who) { store.dirty.delete(docId); saveDirty(); }
+    setSync(store.dirty.size ? 'syncing' : 'synced');
+  } catch(e) {
+    setSync('error', e && e.code === 'permission-denied' ? 'The cloud refused the save. Your ticks are still on this device.' : null);
+  }
+  store.writing[docId] = false;
+}
+function setSync(st, msg){ S.sync = st; S.syncMsg = msg || null; if (S.tab === 'edit') renderSyncLine(); }
+
+// First contact with the cloud on this device: combine both sides, then upload anything the cloud is missing.
+function mergeFirst(cloud){
+  const up = new Set();
+  if (cloud.config && Array.isArray(cloud.config.habits) && !store.dirty.has('config')) {
+    S.config = { v:cloud.config.v || 1, cats:cloud.config.cats, habits:cloud.config.habits };
+    if (migrate(S.config)) up.add('config');
+  } else up.add('config');
+  const cw = (cloud.reviews && cloud.reviews.weeks) || {};
+  const weeks = store.dirty.has('reviews') ? { ...cw, ...S.reviews.weeks } : { ...S.reviews.weeks, ...cw };
+  if (JSON.stringify(weeks) !== JSON.stringify(cw)) up.add('reviews');
+  S.reviews = { weeks };
+  const months = new Set([...Object.keys(S.months), ...Object.keys(cloud).filter(k => k.startsWith('m-')).map(k => k.slice(2))]);
+  for (const m of months) {
+    const cd = (cloud['m-' + m] && cloud['m-' + m].days) || {}, ld = (S.months[m] && S.months[m].days) || {};
+    // Days changed on this device win; days only the cloud has are kept.
+    const days = store.dirty.has('m-' + m) ? { ...cd, ...ld } : { ...ld, ...cd };
+    S.months[m] = { days };
+    if (JSON.stringify(days) !== JSON.stringify(cd)) up.add('m-' + m);
+  }
+  [...store.dirty].forEach(id => up.add(id));
+  store.dirty = new Set(up); saveDirty();
+  store.ready = true;
+  saveLocal(); render(true);
+  if (up.size) { setSync('syncing'); up.forEach(id => flush(id)); } else setSync('synced');
+}
+function onSnap(snap){
+  if (snap.metadata.fromCache && !store.ready) { setSync(navigator.onLine ? 'syncing' : 'offline'); return; }
+  const cloud = {};
+  snap.docs.forEach(d => { cloud[d.id] = clone(d.data() || {}); });
+  if (!store.ready) { mergeFirst(cloud); return; }
+  let changed = false;
+  for (const d of snap.docs) {
+    if (store.dirty.has(d.id) || d.metadata.hasPendingWrites) continue;
+    const data = cloud[d.id];
+    if (d.id === 'config') {
+      if (!Array.isArray(data.habits) || !Array.isArray(data.cats)) continue;
+      if (JSON.stringify(data) === JSON.stringify(bodyFor('config'))) continue;
+      S.config = { v:data.v || 1, cats:data.cats, habits:data.habits };
+      if (migrate(S.config)) queueSave('config');
+      changed = true;
+    } else if (d.id === 'reviews') {
+      if (JSON.stringify(data.weeks || {}) === JSON.stringify(S.reviews.weeks)) continue;
+      S.reviews = { weeks:data.weeks || {} }; changed = true;
+    } else if (d.id.startsWith('m-')) {
+      const m = d.id.slice(2);
+      if (JSON.stringify(data.days || {}) === JSON.stringify((S.months[m] || {}).days || {})) continue;
+      S.months[m] = { days:data.days || {} }; changed = true;
+    }
+  }
+  if (changed) { saveLocal(); render(true); }
+  if (!snap.metadata.fromCache && !store.dirty.size) setSync('synced');
+}
+let gateSkipped = false;
+function renderGate(){
+  const g = $('#gate'); if (!g) return;
+  g.hidden = !(store.authKnown && !S.account && !gateSkipped);
+  const m = $('#gate-msg'); if (m) m.textContent = S.signinMsg || '';
+}
+function setUser(u){
+  store.authKnown = true;
+  if (store.unsub) { store.unsub(); store.unsub = null; }
+  store.user = u || null; store.ready = false;
+  S.account = u ? { name:u.displayName || '', email:u.email || '' } : null;
+  renderGate();
+  if (!u) { setSync('local'); if (S.tab === 'edit') renderEdit(); return; }
+  setSync('syncing');
+  if (S.tab === 'edit') renderEdit();
+  store.unsub = store.m.onSnapshot(store.m.collection(store.db, 'users', u.uid, 'data'), { includeMetadataChanges:true }, onSnap,
+    e => setSync('error', e && e.code === 'permission-denied' ? 'The cloud refused access. Try signing out and in again.' : null));
+}
+async function initCloud(){
+  if (!FIREBASE_CONFIG) return;
+  try {
+    const [appM, authM, fsM] = await Promise.all(['app', 'auth', 'firestore'].map(n => import(FB_URL + 'firebase-' + n + '.js')));
+    store.m = { ...authM, ...fsM };
+    const app = appM.initializeApp(FIREBASE_CONFIG);
+    store.auth = authM.getAuth(app);
+    store.db = fsM.getFirestore(app);
+    authM.getRedirectResult(store.auth).catch(e => { S.signinMsg = 'Sign-in didn’t finish. Try again.'; if (S.tab === 'edit') renderEdit(); });
+    authM.onAuthStateChanged(store.auth, setUser);
+  } catch(e) { store.failed = true; if (S.tab === 'edit') renderEdit(); }
+}
+async function signIn(){
+  if (!store.auth) { S.signinMsg = navigator.onLine ? 'Sign-in isn’t available right now.' : 'You’re offline. Sign in when you have a signal.'; renderEdit(); return; }
+  S.signinMsg = null;
+  const provider = new store.m.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt:'select_account' });
+  try { await store.m.signInWithPopup(store.auth, provider); }
+  catch(e) {
+    const c = e && e.code;
+    if (c === 'auth/popup-blocked' || c === 'auth/operation-not-supported-in-this-environment' || c === 'auth/web-storage-unsupported') {
+      try { await store.m.signInWithRedirect(store.auth, provider); return; } catch(_) {}
+    }
+    if (c !== 'auth/popup-closed-by-user' && c !== 'auth/cancelled-popup-request') { S.signinMsg = 'Sign-in didn’t work. Check your signal and try again.'; renderEdit(); renderGate(); }
+  }
+}
+async function signOut(){
+  if (store.auth) await store.m.signOut(store.auth).catch(() => {});
+}
+window.addEventListener('online', () => { if (store.user && store.ready) store.dirty.forEach(id => flush(id)); });
+window.addEventListener('offline', () => { if (store.user && store.dirty.size) setSync('offline'); });
+
+/* ---------- rendering ---------- */
+const $ = s => document.querySelector(s);
+const V = { today:$('#v-today'), history:$('#v-history'), edit:$('#v-edit') };
+
+function render(fromRemote){
+  const ae = document.activeElement;
+  const typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+  if (!(fromRemote && typing)) {
+    if (S.tab === 'today') renderToday();
+    if (S.tab === 'history') renderHistory();
+    if (S.tab === 'edit') renderEdit();
+  }
+  updateDot();
+}
+function updateDot(){
+  const due = monIdx(todayKey()) === 6 && reviewEmpty(review(checkinWeek()));
+  $('#histdot').hidden = !due;
+}
+
+function renderToday(){
+  const k = S.day, t = todayKey(), d = fromKey(k), hm = habitMap(), rec = getDay(k);
+  const sc = votes(k, hm);
+  const cm = catMap();
+  const ordered = S.config.cats.flatMap(c => habitsIn(c.id));
+  const tally = ordered.map(h => { const st = doneState(k, h.id); return `<span class="${st==='full'?'on':st==='tiny'?'half':''}" style="--c:var(--cat-${cm[h.cat]?.color||'green'})"></span>`; }).join('');
+  const mon = weekStart(k);
+  const wk = Array.from({length:7}, (_,i) => addDays(mon, i));
+  const wkScores = wk.map(x => votes(x, hm));
+  const wkMax = Math.max(4, ...wkScores);
+  const week = wk.map((x,i) => `<button class="wd${x===k?' sel':''}${x===t?' today':''}" data-day="${x}" aria-label="${DOW[fromKey(x).getDay()]} ${fromKey(x).getDate()}, ${wkScores[i]} votes">
+      <span class="l">${'MTWTFSS'[i]}</span><span class="n">${fromKey(x).getDate()}</span>
+      <span class="bar"><i style="height:${Math.round(wkScores[i]/wkMax*100)}%"></i></span></button>`).join('');
+  const rel = k === t ? 'Today' : k === addDays(t,-1) ? 'Yesterday' : k === addDays(t,1) ? 'Tomorrow' : DOW[d.getDay()];
+  const showCheckin = k === t && monIdx(t) === 6 && reviewEmpty(review(checkinWeek()));
+
+  const cats = S.config.cats.map(c => {
+    const hs = habitsIn(c.id); if (!hs.length) return '';
+    const n = hs.filter(h => isDone(k, h.id)).length;
+    const tiles = hs.map(h => {
+      const st = doneState(k, h.id), s = tileStatus(h, k);
+      const cls = st === 'full' ? ' done' : st === 'tiny' ? ' tiny' : s.cls ? ' ' + s.cls : '';
+      return `<button class="tile${cls}" data-hid="${h.id}" aria-pressed="${!!st}">
+        <span class="top"><span class="nm">${esc(h.name)}</span><span class="ck">${I.check}</span></span>
+        ${h.cue ? `<span class="cue">${esc(h.cue)}</span>` : ''}
+        ${s.text ? `<span class="st">${esc(s.text)}</span>` : ''}</button>`;
+    }).join('');
+    return `<div class="cat${S.collapsed[c.id]?' closed':''}" style="--c:var(--cat-${c.color})">
+      <button class="cathead" data-collapse="${c.id}" aria-expanded="${!S.collapsed[c.id]}">
+        <span class="ht"><span class="cn">${esc(c.name)}</span>${c.identity ? `<span class="ident">${esc(c.identity)}</span>` : ''}</span>
+        <span class="cnt">${n}/${hs.length}</span>${I.down}</button>
+      <div class="tiles">${tiles}</div></div>`;
+  }).join('');
+  const anyTiny = S.config.habits.some(h => h.tiny);
+
+  V.today.innerHTML = `
+    <div class="dayhead">
+      <button class="iconbtn" data-step="-1" aria-label="Previous day">${I.left}</button>
+      <div class="dayname"><h1>${rel}</h1><p>${rel===DOW[d.getDay()]?'':DOW[d.getDay()]+' '}${d.getDate()} ${MON[d.getMonth()]}${d.getFullYear()!==new Date().getFullYear()?' '+d.getFullYear():''}</p>
+        ${k!==t?'<button class="todaylink" data-day="'+t+'">Back to today</button>':''}</div>
+      <button class="iconbtn" data-step="1" aria-label="Next day">${I.right}</button>
+    </div>
+    <div class="scorecard">
+      <div class="scorerow"><span class="scorenum">${sc}</span><span class="scorelbl">vote${sc===1?'':'s'} for who you're becoming &middot; <b>${wkScores.reduce((a,b)=>a+b,0)}</b> this week</span></div>
+      <div class="tally" aria-hidden="true">${tally}</div>
+    </div>
+    <div class="week">${week}</div>
+    ${showCheckin ? '<button class="cta" data-goto="history">It’s Sunday. Do your weekly check-in</button>' : ''}
+    ${S.config.habits.length ? cats : '<p class="hint">No habits yet. Add some on the Habits tab.</p>'}
+    ${anyTiny ? '<p class="hint">Press and hold a habit to log its two-minute version.</p>' : ''}
+    <label class="note"><span class="eyebrow">Notes for this day</span>
+      <textarea id="note" placeholder="Plans, who you saw, how it went…">${esc(rec.n)}</textarea></label>`;
+}
+
+function renderHistory(){
+  const [y,m] = S.histMonth.split('-').map(Number);
+  const first = new Date(y, m-1, 1), days = new Date(y, m, 0).getDate();
+  const t = todayKey(), hm = habitMap(), cm = catMap();
+  const lead = (first.getDay()+6)%7;
+  const keys = Array.from({length:days}, (_,i) => keyOf(new Date(y, m-1, i+1)));
+  const scores = keys.map(k => votes(k, hm));
+  const max = Math.max(5, ...scores);
+  let cells = 'MTWTFSS'.split('').map(l => `<div class="dow">${l}</div>`).join('');
+  cells += '<div></div>'.repeat(lead);
+  keys.forEach((k,i) => {
+    const s = scores[i], p = s ? Math.round(18 + s/max*70) : 0;
+    cells += `<button data-day="${k}" class="${k===t?'istoday':''}${k>t?' fut':''}${p>60?' hot':''}" style="--p:${p}%" aria-label="${i+1} ${MON[m-1]}: ${s} votes">
+      <span class="dn">${i+1}</span><span class="sc">${s||''}</span></button>`;
+  });
+  const active = scores.filter(Boolean).length;
+  const sum = scores.reduce((a,b)=>a+b,0);
+  const best = Math.max(0, ...scores);
+  const counts = {};
+  keys.forEach(k => { const r = getDay(k); [...r.d, ...r.t].forEach(id => { if (hm[id]) counts[id] = (counts[id]||0)+1; }); });
+  const ranked = S.config.habits.filter(h => counts[h.id]).sort((a,b) => counts[b.id]-counts[a.id]);
+  const topN = Math.max(1, ...Object.values(counts));
+  const list = ranked.map(h => `<div class="hrow" style="--c:var(--cat-${cm[h.cat]?.color||'green'})">
+      <span class="hn">${esc(h.name)}</span><span class="hc">${counts[h.id]}</span>
+      <span class="hb"><i style="width:${Math.round(counts[h.id]/topN*100)}%"></i></span></div>`).join('');
+
+  // weekly check-in
+  const w = checkinWeek(), r = review(w), pr = review(addDays(w, -7));
+  const wkDays = Array.from({length:7}, (_,i) => addDays(w, i));
+  const wkVotes = wkDays.map(x => votes(x, hm));
+  const wkTotal = wkVotes.reduce((a,b)=>a+b,0);
+  const bi = wkVotes.indexOf(Math.max(...wkVotes));
+  const wkCounts = {};
+  wkDays.forEach(x => { const rr = getDay(x); [...rr.d, ...rr.t].forEach(id => { if (hm[id]) wkCounts[id] = (wkCounts[id]||0)+1; }); });
+  const wkTop = Object.keys(wkCounts).sort((a,b) => wkCounts[b]-wkCounts[a]).slice(0,3).map(id => esc(hm[id].name));
+  const behind = S.config.habits.filter(h => freqOf(h).t === 'times' && weekCount(h, w) < freqOf(h).n).map(h => esc(h.name));
+  const isSun = monIdx(t) === 6;
+  const sumLine = wkTotal
+    ? `<b>${wkTotal}</b> votes this week. Best day ${DOW[fromKey(wkDays[bi]).getDay()]} with ${wkVotes[bi]}.${wkTop.length ? ' Most done: ' + wkTop.join(', ') + '.' : ''}${behind.length ? ' Short of target: ' + behind.join(', ') + '.' : ''}`
+    : 'No votes logged this week yet.';
+  const prevBlock = reviewEmpty(pr) ? '' : `<div class="prev"><span class="eyebrow">Last week you said</span>
+      ${pr.keep ? `<div><span>Keep:</span> ${esc(pr.keep)}</div>` : ''}
+      ${pr.drop ? `<div><span>Drop:</span> ${esc(pr.drop)}</div>` : ''}
+      ${pr.easier ? `<div><span>Make easier:</span> ${esc(pr.easier)}</div>` : ''}</div>`;
+
+  V.history.innerHTML = `
+    <div class="checkin${isSun && reviewEmpty(r) ? ' due' : ''}">
+      <span class="eyebrow">Weekly check-in · week of ${shortDate(w)}</span>
+      <h2>${isSun ? 'How did this week go?' : 'Looking back at the week'}</h2>
+      <p class="wksum">${sumLine}</p>
+      ${prevBlock}
+      <label for="rv-keep">What worked? Keep doing it<textarea id="rv-keep" data-rv="keep" placeholder="e.g. Walking after lunch">${esc(r.keep)}</textarea></label>
+      <label for="rv-drop">What should you drop or pause?<textarea id="rv-drop" data-rv="drop" placeholder="e.g. Pause swimming until the pool reopens">${esc(r.drop)}</textarea></label>
+      <label for="rv-easier">What would make one habit easier?<textarea id="rv-easier" data-rv="easier" placeholder="e.g. Leave the yoga mat out by the bed">${esc(r.easier)}</textarea></label>
+    </div>
+    <div class="monthhead">
+      <button class="iconbtn" data-month="-1" aria-label="Previous month">${I.left}</button>
+      <h1>${MON[m-1]}${y!==new Date().getFullYear()?' '+y:''}</h1>
+      <button class="iconbtn" data-month="1" aria-label="Next month">${I.right}</button>
+    </div>
+    <div class="cal">${cells}</div>
+    <div class="stats">
+      <div class="stat"><b>${sum}</b><span>votes this month</span></div>
+      <div class="stat"><b>${active}</b><span>days with a vote</span></div>
+      <div class="stat"><b>${best}</b><span>best day</span></div>
+    </div>
+    <div class="hlist"><span class="eyebrow">Most done this month</span>
+      ${list || '<p class="hint">Nothing ticked this month yet. Tap a day above to fill it in.</p>'}</div>`;
+}
+
+function renderEdit(){
+  const cats = S.config.cats;
+  const opts = cid => cats.map(c => `<option value="${c.id}"${c.id===cid?' selected':''}>${esc(c.name)}</option>`).join('');
+  const detail = (h, hi, n) => {
+    const f = freqOf(h);
+    const freqExtra = f.t === 'times'
+      ? `<div class="stepper"><button class="sbtn" data-act="ndec" data-hid="${h.id}" aria-label="Fewer times" ${f.n<=1?'disabled':''}>−</button><output>${f.n}</output><button class="sbtn" data-act="ninc" data-hid="${h.id}" aria-label="More times" ${f.n>=6?'disabled':''}>+</button><span class="hint">times a week</span></div>`
+      : f.t === 'days'
+      ? `<div class="daypick">${[1,2,3,4,5,6,0].map(dw => `<button data-act="dayt" data-hid="${h.id}" data-dw="${dw}" aria-pressed="${(f.days||[]).includes(dw)}" aria-label="${DOW[dw]}">${DAY3[dw].slice(0,2)}</button>`).join('')}</div>`
+      : '';
+    return `<div class="edetail">
+      <label for="hab-${h.id}">Name<input class="field" id="hab-${h.id}" data-hname="${h.id}" value="${esc(h.name)}"></label>
+      <label for="cue-${h.id}">When will you do it?<small>Link it to something you already do: "After my morning coffee", "When I get home from work"</small>
+        <input class="field" id="cue-${h.id}" data-hcue="${h.id}" value="${esc(h.cue||'')}" placeholder="After I…"></label>
+      <label for="tiny-${h.id}">Two-minute version<small>The smallest way to show up on a bad day. Press and hold the habit on Today to log it.</small>
+        <input class="field" id="tiny-${h.id}" data-htiny="${h.id}" value="${esc(h.tiny||'')}" placeholder="e.g. Put my trainers on"></label>
+      <div class="fgroup"><span>How often?</span>
+        <div class="seg" role="group" aria-label="How often">
+          <button data-act="freq" data-hid="${h.id}" data-v="daily" aria-pressed="${f.t==='daily'}">Every day</button>
+          <button data-act="freq" data-hid="${h.id}" data-v="times" aria-pressed="${f.t==='times'}">Times a week</button>
+          <button data-act="freq" data-hid="${h.id}" data-v="days" aria-pressed="${f.t==='days'}">Set days</button>
+        </div>${freqExtra}</div>
+      <label for="sel-${h.id}">Group<select id="sel-${h.id}" data-hcat="${h.id}">${opts(h.cat)}</select></label>
+      <div class="erowbtns">
+        <button class="sbtn danger" data-act="del" data-hid="${h.id}" aria-label="Delete habit">${I.bin}</button>
+        <button class="sbtn" data-act="open" data-hid="${h.id}">Done</button>
+      </div></div>`;
+  };
+  V.edit.innerHTML = `
+    <div><h1 style="font-size:32px;font-weight:800;letter-spacing:-.02em">Your habits</h1>
+      <p class="hint">Tap a habit to set when you'll do it, how often, and its two-minute version. Tap a colour square to change a group's colour.</p></div>
+    ${cats.map((c, ci) => {
+      const hs = habitsIn(c.id);
+      return `<div class="ecat" style="--c:var(--cat-${c.color})">
+        <div class="ecathead">
+          <button class="swatch" data-act="color" data-cid="${c.id}" aria-label="Change colour of ${esc(c.name)}"></button>
+          <input class="field" id="cat-${c.id}" data-cname="${c.id}" value="${esc(c.name)}" aria-label="Group name">
+          <button class="sbtn" data-act="cup" data-cid="${c.id}" ${ci===0?'disabled':''} aria-label="Move group up">${I.up}</button>
+          <button class="sbtn danger" data-act="cdel" data-cid="${c.id}" aria-label="Delete group">${I.bin}</button>
+        </div>
+        <input class="field identfield" id="ident-${c.id}" data-cident="${c.id}" value="${esc(c.identity||'')}" placeholder="Who are you becoming? I'm someone who…" aria-label="Identity statement for ${esc(c.name)}">
+        ${hs.map((h, hi) => {
+          const open = S.openHabit === h.id;
+          const sum = [freqLabel(h), h.cue].filter(Boolean).join(' · ');
+          return `<div class="erow">
+            <button class="esum" data-act="open" data-hid="${h.id}" aria-expanded="${open}"><span class="tx"><span class="en">${esc(h.name)}</span><span class="es">${esc(sum)}</span></span>${I.down}</button>
+            <button class="sbtn" data-act="up" data-hid="${h.id}" ${hi===0?'disabled':''} aria-label="Move up">${I.up}</button>
+            <button class="sbtn" data-act="down" data-hid="${h.id}" ${hi===hs.length-1?'disabled':''} aria-label="Move down">${I.down}</button>
+          </div>${open ? detail(h, hi, hs.length) : ''}`;
+        }).join('')}
+        <button class="addbtn" data-act="add" data-cid="${c.id}">+ Add habit to ${esc(c.name)}</button>
+      </div>`;
+    }).join('')}
+    <button class="addbtn big" data-act="addcat">+ Add a group</button>
+    ${accountBlock()}
+    <div class="ecat" style="--c:var(--ink)">
+      <span class="eyebrow">Backup</span>
+      <p class="hint">${S.account ? 'Your habits are synced to your Google account. A backup file is a spare copy you can keep anywhere.' : 'Your habits and history live on this phone. Save a backup now and then and keep it somewhere safe, like Google Drive.'}</p>
+      <div class="erowbtns" style="justify-content:flex-start"><button class="sbtn" data-act="export">Save backup file</button></div>
+      <span class="eyebrow" style="margin-top:6px">Restore</span>
+      <p class="hint">Bring in a backup file, or paste a backup copied from the Claude version. This replaces what's in the app now.</p>
+      <div class="erowbtns" style="justify-content:flex-start"><label class="sbtn" for="importfile">Restore from file</label></div>
+      <input type="file" id="importfile" accept=".json,application/json,text/plain" hidden>
+      <textarea id="importbox" placeholder="…or paste a backup here" style="min-height:64px;background:var(--bg)"></textarea>
+      <div class="erowbtns" style="justify-content:flex-start"><button class="sbtn" data-act="pasteimport">Restore pasted backup</button></div>
+      <div id="confirmbox" hidden style="display:flex;flex-direction:column;gap:8px">
+        <p id="confirmtext" style="margin:0;font-weight:700"></p>
+        <div class="erowbtns" style="justify-content:flex-start">
+          <button class="sbtn armed" data-act="confirmimport">Replace with backup</button>
+          <button class="sbtn" data-act="cancelimport">Cancel</button>
+        </div>
+      </div>
+      <p class="hint" id="exportmsg" role="status"></p>
+    </div>
+    <div class="sync" id="sync"></div>`;
+  renderSyncLine();
+}
+function accountBlock(){
+  if (!FIREBASE_CONFIG) return '';
+  const msg = S.signinMsg ? `<p class="hint" role="status" style="color:var(--warn)">${esc(S.signinMsg)}</p>` : '';
+  if (S.account) return `<div class="ecat" style="--c:var(--tick)">
+      <span class="eyebrow">Account</span>
+      <p style="margin:0">Signed in as <b>${esc(S.account.email || S.account.name)}</b>. Sign in with the same Google account on your computer or another phone to see the same habits.</p>
+      <div class="erowbtns" style="justify-content:flex-start"><button class="sbtn" data-act="signout">Sign out</button></div>${msg}
+    </div>`;
+  return `<div class="ecat" style="--c:var(--tick)">
+      <span class="eyebrow">Account</span>
+      <p class="hint">Sign in with Google to sync your habits between your phone and your computer. What's on this phone now comes with you.</p>
+      <div class="erowbtns" style="justify-content:flex-start"><button class="sbtn armed" data-act="signin" ${store.failed && !navigator.onLine ? 'disabled' : ''}>Sign in with Google</button></div>${msg}
+    </div>`;
+}
+function renderSyncLine(){
+  const el = $('#sync'); if (!el) return;
+  if (S.account) {
+    const st = S.sync, txt = st === 'synced' ? 'Synced with your Google account.'
+      : st === 'offline' ? 'Offline. Changes are saved here and will sync when you’re back online.'
+      : st === 'error' ? (S.syncMsg || 'Couldn’t sync just now. Changes are saved here and will retry.')
+      : 'Syncing…';
+    el.className = 'sync' + (st === 'synced' ? ' ok' : st === 'error' || st === 'offline' ? ' warn' : '');
+    el.innerHTML = '<i></i>' + esc(txt);
+    return;
+  }
+  const lb = S.lastBackup, age = lb ? Math.floor((Date.now() - new Date(lb)) / 864e5) : null;
+  el.className = 'sync' + (lb && age <= 30 ? ' ok' : '');
+  el.innerHTML = '<i></i>' + esc(!lb ? 'Saved on this phone. You haven’t saved a backup yet.'
+    : `Saved on this phone. Last backup ${age === 0 ? 'today' : age === 1 ? 'yesterday' : age + ' days ago'}.`);
+}
+function setTab(tab){
+  S.tab = tab;
+  for (const [k, el] of Object.entries(V)) el.hidden = k !== tab;
+  document.querySelectorAll('[data-tab]').forEach(b => b.dataset.tab === tab ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  render();
+  window.scrollTo(0,0);
+}
+function goDay(k){ S.day = k; if (S.tab !== 'today') setTab('today'); else render(); }
+const keepScroll = fn => { const y = window.scrollY; fn(); window.scrollTo(0, y); };
+const buzz = p => { try { if (navigator.vibrate) navigator.vibrate(p); } catch(_) {} };
+
+/* ---------- events: Today ---------- */
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+
+function tapHabit(id){
+  const rec = getDay(S.day), st = doneState(S.day, id);
+  let d = rec.d.filter(x => x !== id), t = rec.t.filter(x => x !== id);
+  if (st !== 'full') { d.push(id); buzz(12); }          // tap: none → done, two-minute → done, done → none
+  putDay(S.day, { d, t, n:rec.n });
+  keepScroll(renderToday); updateDot();
+}
+function holdHabit(id){
+  const h = habitMap()[id], rec = getDay(S.day), st = doneState(S.day, id);
+  let d = rec.d.filter(x => x !== id), t = rec.t.filter(x => x !== id);
+  if (!st) { t.push(id); buzz([10,40,10]); }
+  putDay(S.day, { d, t, n:rec.n });
+  keepScroll(renderToday);
+}
+const lp = { timer:null, fired:false, x:0, y:0, el:null };
+const cancelLongPress = () => {
+  clearTimeout(lp.timer); lp.timer = null;
+  if (lp.el) { lp.el.classList.remove('pressing'); lp.el = null; }
+};
+V.today.addEventListener('pointerdown', e => {
+  const tile = e.target.closest('.tile'); if (!tile) return;
+  cancelLongPress();
+  lp.fired = false; lp.x = e.clientX; lp.y = e.clientY; lp.el = tile;
+  lp.timer = setTimeout(() => {
+    lp.fired = true;
+    if (lp.el) { lp.el.classList.remove('pressing'); lp.el = null; }
+    holdHabit(tile.dataset.hid);
+  }, 600);
+  setTimeout(() => { if (lp.el === tile) tile.classList.add('pressing'); }, 180);
+});
+V.today.addEventListener('pointermove', e => { if (lp.el && Math.hypot(e.clientX-lp.x, e.clientY-lp.y) > 10) cancelLongPress(); });
+V.today.addEventListener('pointerup', e => { if (!lp.fired) cancelLongPress(); });
+['pointercancel','pointerleave'].forEach(ev => V.today.addEventListener(ev, cancelLongPress));
+V.today.addEventListener('contextmenu', e => { if (e.target.closest('.tile')) e.preventDefault(); });
+
+V.today.addEventListener('click', e => {
+  const tile = e.target.closest('[data-hid]');
+  if (tile) {
+    if (lp.fired) { lp.fired = false; return; }
+    tapHabit(tile.dataset.hid); return;
+  }
+  const st = e.target.closest('[data-step]'); if (st) { S.day = addDays(S.day, +st.dataset.step); renderToday(); return; }
+  const dd = e.target.closest('[data-day]'); if (dd) { S.day = dd.dataset.day; renderToday(); return; }
+  const go = e.target.closest('[data-goto]'); if (go) { setTab(go.dataset.goto); return; }
+  const col = e.target.closest('[data-collapse]');
+  if (col) { const id = col.dataset.collapse; S.collapsed[id] = !S.collapsed[id]; saveLocal(); keepScroll(renderToday); }
+});
+let noteTimer;
+V.today.addEventListener('input', e => {
+  if (e.target.id !== 'note') return;
+  const k = S.day, val = e.target.value;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => { const rec = getDay(k); putDay(k, { d:rec.d, t:rec.t, n:val }); }, 400);
+});
+// swipe left/right to change day
+(() => {
+  let x0 = null, y0;
+  V.today.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { passive:true });
+  V.today.addEventListener('touchend', e => {
+    if (x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+    if (e.target.closest('textarea')) return;
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.8) { cancelPress(); S.day = addDays(S.day, dx < 0 ? 1 : -1); renderToday(); }
+  }, { passive:true });
+})();
+
+/* ---------- events: History ---------- */
+V.history.addEventListener('click', e => {
+  const mb = e.target.closest('[data-month]');
+  if (mb) { const [y,m] = S.histMonth.split('-').map(Number); const d = new Date(y, m-1 + (+mb.dataset.month), 1); S.histMonth = `${d.getFullYear()}-${pad(d.getMonth()+1)}`; keepScroll(renderHistory); return; }
+  const dd = e.target.closest('[data-day]'); if (dd) goDay(dd.dataset.day);
+});
+let rvTimer;
+V.history.addEventListener('input', e => {
+  const f = e.target.dataset.rv; if (!f) return;
+  const w = checkinWeek(), val = e.target.value;
+  clearTimeout(rvTimer);
+  rvTimer = setTimeout(() => {
+    const r = { ...review(w), [f]: val };
+    if (reviewEmpty(r)) delete S.reviews.weeks[w]; else S.reviews.weeks[w] = r;
+    queueSave('reviews'); updateDot();
+  }, 400);
+});
+
+/* ---------- backup export ---------- */
+const backupJSON = () => JSON.stringify({ app:'daily-awesomeness', format:1, exportedAt:new Date().toISOString(),
+  config:S.config, months:S.months, reviews:S.reviews });
+function doExport(){
+  const name = `daily-awesomeness-backup-${todayKey()}.json`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([backupJSON()], { type:'application/json' }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  S.lastBackup = new Date().toISOString(); saveLocal(); renderSyncLine();
+  const msg = $('#exportmsg'); if (msg) msg.textContent = `Saved ${name} to your Downloads.`;
+}
+let pendingImport = null;
+function stageImport(text){
+  const msg = $('#exportmsg'), say = t => { if (msg) msg.textContent = t; };
+  let o;
+  try { o = JSON.parse(text); } catch(e) { say('That isn’t a backup. Check you copied the whole thing.'); return; }
+  if (!o || o.app !== 'daily-awesomeness' || !o.config || !Array.isArray(o.config.habits) || !Array.isArray(o.config.cats)) {
+    say('That file isn’t a Daily Awesomeness backup.'); return;
+  }
+  pendingImport = o;
+  const days = Object.values(o.months || {}).reduce((n, m) => n + Object.keys(m.days || {}).length, 0);
+  const when = o.exportedAt ? new Date(o.exportedAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : 'an unknown date';
+  $('#confirmtext').textContent = `Backup from ${when}: ${o.config.habits.length} habits and ${days} day${days===1?'':'s'} logged. Replace what's in the app now?`;
+  $('#confirmbox').hidden = false; say('');
+}
+function applyImport(){
+  const o = pendingImport; if (!o) return;
+  S.config = o.config; S.months = o.months || {}; S.reviews = (o.reviews && o.reviews.weeks) ? o.reviews : { weeks:{} };
+  migrate(S.config); pendingImport = null; S.openHabit = null;
+  queueSave('config'); queueSave('reviews'); Object.keys(S.months).forEach(m => queueSave('m-' + m));
+  renderEdit(); updateDot();
+  const msg = $('#exportmsg'); if (msg) msg.textContent = 'Restored. Everything from the backup is in the app.';
+}
+
+/* ---------- events: Habits editor ---------- */
+const saveConfig = () => queueSave('config');
+let armed = null, armTimer;
+function arm(btn, key){
+  if (armed === key) { armed = null; return true; }
+  armed = key; clearTimeout(armTimer);
+  document.querySelectorAll('.sbtn.armed').forEach(b => { b.classList.remove('armed'); b.innerHTML = I.bin; });
+  btn.classList.add('armed'); btn.textContent = 'Delete?';
+  armTimer = setTimeout(() => { armed = null; btn.classList.remove('armed'); btn.innerHTML = I.bin; }, 3000);
+  return false;
+}
+V.edit.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, H = S.config.habits, C = S.config.cats;
+  const h = b.dataset.hid ? H.find(x => x.id === b.dataset.hid) : null;
+  if (act === 'signin') { signIn(); return; }
+  if (act === 'signout') { signOut(); return; }
+  if (act === 'export') { doExport(); return; }
+  if (act === 'pasteimport') { const v = $('#importbox').value.trim(); if (v) stageImport(v); return; }
+  if (act === 'confirmimport') { applyImport(); return; }
+  if (act === 'cancelimport') { pendingImport = null; $('#confirmbox').hidden = true; return; }
+  if (act === 'open') { S.openHabit = S.openHabit === h.id ? null : h.id; keepScroll(renderEdit); return; }
+  if (act === 'up' || act === 'down') {
+    const sib = habitsIn(h.cat), i = sib.indexOf(h), j = act === 'up' ? i-1 : i+1;
+    if (j < 0 || j >= sib.length) return;
+    const a = H.indexOf(h), c = H.indexOf(sib[j]); [H[a], H[c]] = [H[c], H[a]];
+  } else if (act === 'freq') {
+    const v = b.dataset.v;
+    if (v === 'daily') delete h.freq;
+    else if (v === 'times') h.freq = { t:'times', n: freqOf(h).t === 'times' ? freqOf(h).n : 3 };
+    else h.freq = { t:'days', days: freqOf(h).t === 'days' ? freqOf(h).days : [6] };
+  } else if (act === 'ninc' || act === 'ndec') {
+    h.freq.n = Math.min(6, Math.max(1, h.freq.n + (act === 'ninc' ? 1 : -1)));
+  } else if (act === 'dayt') {
+    const dw = +b.dataset.dw, ds = new Set(h.freq.days || []);
+    ds.has(dw) ? ds.delete(dw) : ds.add(dw); h.freq.days = [...ds];
+  } else if (act === 'del') {
+    if (!arm(b, 'h:' + h.id)) return;
+    S.config.habits = H.filter(x => x.id !== h.id); S.openHabit = null;
+  } else if (act === 'add') {
+    const nh = { id: uid('h'), name: 'New habit', cat: b.dataset.cid };
+    H.splice(H.map(x => x.cat).lastIndexOf(nh.cat) + 1, 0, nh);
+    S.openHabit = nh.id;
+    saveConfig(); keepScroll(renderEdit);
+    const inp = document.getElementById('hab-' + nh.id); if (inp) { inp.focus(); inp.select(); }
+    return;
+  } else if (act === 'color') {
+    const c = C.find(x => x.id === b.dataset.cid); c.color = COLORS[(COLORS.indexOf(c.color)+1) % COLORS.length];
+  } else if (act === 'cup') {
+    const i = C.findIndex(x => x.id === b.dataset.cid); if (i > 0) [C[i-1], C[i]] = [C[i], C[i-1]];
+  } else if (act === 'cdel') {
+    const cid = b.dataset.cid, others = C.filter(x => x.id !== cid);
+    if (!others.length && habitsIn(cid).length) return;
+    if (!arm(b, 'c:' + cid)) return;
+    if (others.length) H.forEach(x => { if (x.cat === cid) x.cat = others[0].id; });
+    S.config.cats = others;
+  } else if (act === 'addcat') {
+    const used = new Set(C.map(c => c.color));
+    const c = { id: uid('c'), name: 'New group', color: COLORS.find(x => !used.has(x)) || 'teal' };
+    C.push(c); saveConfig(); keepScroll(renderEdit);
+    const inp = document.getElementById('cat-' + c.id); if (inp) { inp.focus(); inp.select(); }
+    return;
+  }
+  saveConfig(); keepScroll(renderEdit);
+});
+V.edit.addEventListener('change', e => {
+  const t = e.target, H = S.config.habits, d = t.dataset;
+  if (t.id === 'importfile') {
+    const f = t.files && t.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = () => stageImport(String(r.result)); r.readAsText(f); t.value = '';
+    return;
+  }
+  if (d.hname) { const h = H.find(x => x.id === d.hname); h.name = t.value.trim() || h.name; saveConfig(); keepScroll(renderEdit); }
+  else if (d.hcue) { const h = H.find(x => x.id === d.hcue); const v = t.value.trim(); if (v) h.cue = v; else delete h.cue; saveConfig(); keepScroll(renderEdit); }
+  else if (d.htiny) { const h = H.find(x => x.id === d.htiny); const v = t.value.trim(); if (v) h.tiny = v; else delete h.tiny; saveConfig(); }
+  else if (d.cname) { const c = S.config.cats.find(x => x.id === d.cname); c.name = t.value.trim() || c.name; saveConfig(); keepScroll(renderEdit); }
+  else if (d.cident) { const c = S.config.cats.find(x => x.id === d.cident); c.identity = t.value.trim(); saveConfig(); }
+  else if (d.hcat) {
+    const h = H.find(x => x.id === d.hcat);
+    H.splice(H.indexOf(h), 1); h.cat = t.value;
+    H.splice(H.map(x => x.cat).lastIndexOf(h.cat) + 1, 0, h);
+    saveConfig(); keepScroll(renderEdit);
+  }
+});
+V.edit.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.target.blur(); });
+
+// keep "today" honest if the app stays open past midnight
+let lastToday = todayKey();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const t = todayKey(); if (t !== lastToday) { if (S.day === lastToday) S.day = t; lastToday = t; render(); }
+});
+
+loadLocal();
+if (migrate(S.config)) saveLocal();
+setTab('today');
+initCloud();
+$('#gate-signin').addEventListener('click', signIn);
+$('#gate-later').addEventListener('click', () => { gateSkipped = true; renderGate(); });
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(_) {}
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+})();
+</script>
+</body>
+</html>
