@@ -1,6 +1,6 @@
 // Offline support for Daily Awesomeness.
 // The app page is fetched fresh when online (so updates arrive) and served from cache when offline.
-const APP_CACHE = 'awesomeness-app-v11';
+const APP_CACHE = 'awesomeness-app-v12';
 const FONT_CACHE = 'awesomeness-fonts-v1';
 const LIB_CACHE = 'awesomeness-libs-v1';
 const APP_FILES = [
