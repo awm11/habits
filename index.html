@@ -85,7 +85,8 @@ h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
 .wd .l{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.06em}
 .wd .n{font-variant-numeric:tabular-nums;font-weight:700}
 .wd .bar{width:60%;height:28px;display:flex;align-items:flex-end;background:var(--surface-2);border-radius:5px;overflow:hidden}
-.wd .bar i{display:block;width:100%;background:var(--tick);border-radius:5px 5px 0 0}
+.wd .bar i{display:flex;flex-direction:column-reverse;gap:1.5px;width:100%;border-radius:5px 5px 0 0;overflow:hidden}
+.wd .bar i b{display:block;min-height:2px}
 .wd.sel{background:var(--surface);border-color:var(--ink)}
 .wd.today .n{color:var(--tick)}
 .cta{border:1px solid var(--tick);background:color-mix(in srgb, var(--tick) 12%, var(--surface));border-radius:12px;min-height:52px;font-weight:700;padding:0 16px;text-align:left}
@@ -720,9 +721,15 @@ function renderToday(){
   const wk = Array.from({length:7}, (_,i) => addDays(mon, i));
   const wkScores = wk.map(x => votes(x, hm));
   const wkMax = Math.max(4, ...wkScores);
+  // Each day's bar is split into its groups' colours (first group at the bottom), sized by ticks in each group.
+  const daySegs = x => {
+    const r = getDay(x), n = {};
+    [...r.d, ...r.t].forEach(id => { const h = hm[id]; if (h) n[h.cat] = (n[h.cat] || 0) + 1; });
+    return S.config.cats.filter(c => n[c.id]).map(c => `<b style="flex:${n[c.id]};background:var(--cat-${c.color})"></b>`).join('');
+  };
   const week = wk.map((x,i) => `<button class="wd${x===k?' sel':''}${x===t?' today':''}" data-day="${x}" aria-label="${DOW[fromKey(x).getDay()]} ${fromKey(x).getDate()}, ${wkScores[i]} votes">
       <span class="l">${'MTWTFSS'[i]}</span><span class="n">${fromKey(x).getDate()}</span>
-      <span class="bar"><i style="height:${Math.round(wkScores[i]/wkMax*100)}%"></i></span></button>`).join('');
+      <span class="bar"><i style="height:${Math.round(wkScores[i]/wkMax*100)}%">${daySegs(x)}</i></span></button>`).join('');
   const rel = k === t ? 'Today' : k === addDays(t,-1) ? 'Yesterday' : k === addDays(t,1) ? 'Tomorrow' : DOW[d.getDay()];
   const showCheckin = k === t && monIdx(t) === 6 && reviewEmpty(review(checkinWeek()));
 
