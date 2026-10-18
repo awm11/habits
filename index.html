@@ -218,28 +218,41 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 .tadd input:focus{outline:none;border-color:var(--tick)}
 .tadd button{min-width:60px;min-height:60px;border-radius:var(--r);border:0;background:var(--tick);color:var(--surface);font-size:30px;font-weight:700;line-height:1}
 .tlist{display:flex;flex-direction:column;gap:10px}
-.trow{display:flex;align-items:center;gap:14px;min-height:66px;padding:12px 14px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);text-align:left;width:100%;
-  overflow:hidden;max-height:240px;transition:background .2s,border-color .2s,max-height .32s ease,opacity .32s ease,padding .32s ease,margin .32s ease,border-width .32s ease}
-.trow .tx{flex:1;min-width:0;font-size:18px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
-.tck{flex:none;width:36px;height:36px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;color:var(--surface);transition:background .2s,border-color .2s,transform .2s}
+.trow{position:relative;display:flex;align-items:stretch;min-height:66px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);
+  overflow:hidden;max-height:400px;transition:background .2s,border-color .2s,max-height .32s ease,opacity .32s ease,margin .32s ease,border-width .32s ease,box-shadow .15s}
+.trow .tdo{flex:none;width:66px;border:0;background:none;display:grid;place-items:center;padding:0}
+.tck{width:36px;height:36px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;color:var(--surface);transition:background .2s,border-color .2s,transform .2s}
+.tdo:active .tck{transform:scale(.88);border-color:var(--tick)}
 .tck svg{width:22px;height:22px;opacity:0;transition:opacity .15s}
+.trow .tx{flex:1;min-width:0;border:0;background:none;text-align:left;padding:14px 4px;font-size:18px;font-weight:700;line-height:1.3;overflow-wrap:anywhere;cursor:text}
+.trow .tedit{flex:1;min-width:0;margin:8px 0;border:2px solid var(--tick);border-radius:10px;background:var(--bg);padding:8px 10px;font-size:18px;font-weight:700}
+.trow .tedit:focus{outline:none}
+.grip{flex:none;width:48px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.grip svg{width:22px;height:22px}
+.trow.dragging{z-index:5;box-shadow:0 10px 28px rgba(0,0,0,.22);border-color:var(--tick);transition:box-shadow .15s,border-color .15s}
+.trow.dragging .grip{cursor:grabbing;color:var(--tick)}
 .trow.flash{background:color-mix(in srgb, var(--tick) 28%, var(--surface));border-color:var(--tick);animation:tflash .65s ease}
 .trow.flash .tck{background:var(--tick);border-color:var(--tick);transform:scale(1.12)}
 .trow.flash .tck svg{opacity:1}
-.trow.gone{max-height:0;opacity:0;padding-block:0;margin-top:-10px;border-width:0}
+.trow.gone{max-height:0;opacity:0;margin-top:-10px;border-width:0}
 @keyframes tflash{0%{background:var(--surface)}35%{background:color-mix(in srgb, var(--tick) 55%, var(--surface))}100%{background:color-mix(in srgb, var(--tick) 28%, var(--surface))}}
 @media (prefers-reduced-motion: reduce){.trow,.tck{transition:none}.trow.flash{animation:none}}
 .tempty{color:var(--muted);text-align:center;padding:18px 8px}
 .dhead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;border:0;background:none;padding:0;width:100%;font-weight:700;color:var(--muted);font-size:16px}
 .dhead svg{width:20px;height:20px;transition:transform .2s}
 .dhead[aria-expanded="false"] svg{transform:rotate(-90deg)}
-.drow{display:flex;align-items:center;gap:8px}
-.drow .trow{min-height:54px;padding:8px 12px;border-style:dashed;background:none}
-.drow .trow .tx{font-weight:400;font-size:16px;color:var(--muted);text-decoration:line-through}
-.drow .trow .tck{width:30px;height:30px;background:var(--tick);border-color:var(--tick)}
-.drow .trow .tck svg{opacity:1;width:18px;height:18px}
-.drow .del{flex:none;width:48px;height:48px;border-radius:12px;border:0;background:none;color:var(--muted);display:grid;place-items:center}
+.drow{display:flex;align-items:center;gap:8px;min-height:58px;padding:6px 6px 6px 14px;border-radius:var(--r);border:2px dashed var(--line)}
+.drow .tx{flex:1;min-width:0;color:var(--muted);text-decoration:line-through;overflow-wrap:anywhere}
+.drow .restore{flex:none;min-height:44px;padding:0 14px;border-radius:10px;border:2px solid var(--tick);background:none;color:var(--tick);font-weight:700}
+.drow .del{flex:none;width:44px;height:44px;border-radius:10px;border:0;background:none;color:var(--muted);display:grid;place-items:center}
 .drow .del svg{width:20px;height:20px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom, 0px));transform:translate(-50%, 20px);z-index:40;width:min(calc(100% - 32px), 480px);
+  display:flex;align-items:center;gap:12px;padding:10px 10px 10px 16px;border-radius:14px;background:var(--ink);color:var(--bg);box-shadow:0 8px 24px rgba(0,0,0,.25);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%, 0);pointer-events:auto}
+.toast .tm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast .tm b{color:var(--tick);margin-right:6px}
+.toast button{flex:none;min-height:44px;padding:0 14px;border:0;border-radius:10px;background:none;color:var(--tick);font-weight:800;font-size:16px}
 
 /* Bottom nav */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:color-mix(in srgb, var(--surface) 92%, transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
@@ -892,57 +905,144 @@ const STARTER_TODOS = [
   { id:'td-start-3', text:'Save a backup of your habits (Habits tab)', at:'2026-01-01T00:00:00.000Z' }
 ];
 const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const GRIP = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>';
 const todoItems = () => (S.todos && S.todos.items) || [];
+// Position in the list: set by dragging; older items without one fall back to newest-first.
+const tkey = t => typeof t.order === 'number' ? t.order : -Date.parse(t.at) / 1000;
+const openTodos = () => todoItems().filter(t => !t.done).sort((a, b) => tkey(a) - tkey(b));
+let editingTodo = null;
 function renderTodo(){
-  const items = todoItems();
-  const open = items.filter(t => !t.done).sort((a, b) => b.at.localeCompare(a.at));
-  const done = items.filter(t => t.done).sort((a, b) => b.done.localeCompare(a.done));
+  const open = openTodos();
+  const done = todoItems().filter(t => t.done).sort((a, b) => b.done.localeCompare(a.done));
   const showDone = !!S.collapsed['todo-done'];
   const draft = $('#tnew') ? $('#tnew').value : '';
   V.todo.innerHTML = `
     <div><h1 style="font-size:32px;font-weight:800;letter-spacing:-.02em">To do</h1>
-      <p class="hint">${open.length ? `${open.length} to go. Tap one when it's done.` : 'All clear.'}</p></div>
+      <p class="hint">${open.length ? `${open.length} to go. Tap the circle when one's done, tap the words to edit, drag the dots to reorder.` : 'All clear.'}</p></div>
     <form class="tadd" id="tform" autocomplete="off">
       <input id="tnew" placeholder="Add a to-do…" aria-label="New to-do" enterkeyhint="done" maxlength="200">
       <button type="submit" aria-label="Add to-do">+</button>
     </form>
-    <div class="tlist">${open.length ? open.map(t => `
-      <button class="trow" data-tdone="${t.id}" aria-label="Mark done: ${esc(t.text)}"><span class="tck">${TICK}</span><span class="tx">${esc(t.text)}</span></button>`).join('')
+    <div class="tlist" id="topen">${open.length ? open.map(t => `
+      <div class="trow" data-tid="${t.id}">
+        <button class="tdo" data-tdone="${t.id}" aria-label="Mark done: ${esc(t.text)}"><span class="tck">${TICK}</span></button>
+        ${editingTodo === t.id
+          ? `<input class="tedit" id="tedit" data-tedit="${t.id}" value="${esc(t.text)}" maxlength="200" enterkeyhint="done" aria-label="Edit to-do">`
+          : `<button class="tx" data-tedit-open="${t.id}" aria-label="Edit: ${esc(t.text)}">${esc(t.text)}</button>`}
+        <span class="grip" data-grip aria-hidden="true">${GRIP}</span>
+      </div>`).join('')
       : `<p class="tempty">Nothing to do. Add something above.</p>`}</div>
     ${done.length ? `<div>
       <button class="dhead" data-tshow aria-expanded="${showDone}"><span>Done · ${done.length}</span>${I.down}</button>
       ${showDone ? `<div class="tlist">${done.slice(0, 50).map(t => `
-        <div class="drow"><button class="trow" data-tundo="${t.id}" aria-label="Bring back: ${esc(t.text)}"><span class="tck">${TICK}</span><span class="tx">${esc(t.text)}</span></button>
+        <div class="drow"><span class="tx">${esc(t.text)}</span>
+          <button class="restore" data-tundo="${t.id}">Restore</button>
           <button class="del" data-tdel="${t.id}" aria-label="Delete ${esc(t.text)}">${I.bin}</button></div>`).join('')}
         <button class="sbtn" data-tclear style="align-self:flex-start;margin-top:4px">Clear done</button></div>` : ''}
     </div>` : ''}`;
   if (draft) $('#tnew').value = draft;
+  const ed = $('#tedit'); if (ed) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
 }
 function saveTodos(){ queueSave('todos'); }
 function addTodo(text){
   text = text.trim(); if (!text) return;
   if (!S.todos) S.todos = { items:[] };
-  S.todos.items.push({ id:uid('td'), text, at:new Date().toISOString() });
-  saveTodos(); renderTodo(); $('#tnew').focus();
+  const open = openTodos();
+  const order = open.length ? tkey(open[0]) - 1 : 0;   // new ones go to the top
+  S.todos.items.push({ id:uid('td'), text, at:new Date().toISOString(), order });
+  saveTodos();
+  $('#tnew').value = '';
+  renderTodo(); $('#tnew').focus();
 }
+function finishEdit(save){
+  const ed = $('#tedit'); if (!ed || !editingTodo) return;
+  const t = todoItems().find(x => x.id === editingTodo); editingTodo = null;
+  const v = ed.value.trim();
+  if (save && t && v && v !== t.text) { t.text = v; saveTodos(); }
+  keepScroll(renderTodo);
+}
+
+// "Buy milk completed · Undo" message above the tab bar
+let toastTimer, toastUndo = null;
+function showToast(html, undo){
+  let el = $('#toast');
+  if (!el) {
+    el = document.createElement('div'); el.className = 'toast'; el.id = 'toast'; el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+    el.addEventListener('click', e => { if (e.target.closest('[data-undo]') && toastUndo) { const f = toastUndo; toastUndo = null; hideToast(); f(); } });
+  }
+  toastUndo = undo || null;
+  el.innerHTML = `<span class="tm">${html}</span>${undo ? '<button data-undo>Undo</button>' : ''}`;
+  requestAnimationFrame(() => el.classList.add('show'));
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 4000);
+}
+function hideToast(){ const el = $('#toast'); if (el) el.classList.remove('show'); toastUndo = null; }
+
 function completeTodo(id, row){
   const t = todoItems().find(x => x.id === id); if (!t || t.done || row.classList.contains('flash')) return;
   t.done = new Date().toISOString(); saveTodos(); buzz(15);
+  showToast(`<b>✓</b>${esc(t.text)} completed`, () => { delete t.done; saveTodos(); if (S.tab === 'todo') keepScroll(renderTodo); });
   row.classList.add('flash');
   const fast = matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(() => row.classList.add('gone'), fast ? 250 : 700);
   setTimeout(() => { row.classList.remove('flash'); if (!document.querySelector('.trow.flash') && S.tab === 'todo') keepScroll(renderTodo); }, fast ? 300 : 1050);
 }
+
+// Drag to reorder: press and move the dots on the right of a row.
+const drag = { row:null, startY:0, pid:null, gap:10 };
+V.todo.addEventListener('pointerdown', e => {
+  const g = e.target.closest('[data-grip]'); if (!g || drag.row) return;
+  const row = g.closest('.trow'); if (!row || row.classList.contains('flash')) return;
+  e.preventDefault();
+  drag.row = row; drag.startY = e.clientY; drag.pid = e.pointerId;
+  try { g.setPointerCapture(e.pointerId); } catch(_) {}
+  row.classList.add('dragging'); buzz(8);
+});
+V.todo.addEventListener('pointermove', e => {
+  const row = drag.row; if (!row || e.pointerId !== drag.pid) return;
+  e.preventDefault();
+  let dy = e.clientY - drag.startY;
+  const prev = row.previousElementSibling, next = row.nextElementSibling;
+  if (prev && dy < -(prev.offsetHeight / 2 + drag.gap)) { row.parentNode.insertBefore(row, prev); drag.startY -= prev.offsetHeight + drag.gap; dy = e.clientY - drag.startY; }
+  else if (next && dy > next.offsetHeight / 2 + drag.gap) { row.parentNode.insertBefore(next, row); drag.startY += next.offsetHeight + drag.gap; dy = e.clientY - drag.startY; }
+  row.style.transform = `translateY(${dy}px)`;
+  // keep the row in view near the top or bottom of the screen
+  const edge = 90, vh = window.innerHeight;
+  if (e.clientY < edge) window.scrollBy(0, -12); else if (e.clientY > vh - edge - 70) window.scrollBy(0, 12);
+});
+function endDrag(){
+  const row = drag.row; if (!row) return;
+  drag.row = null; row.classList.remove('dragging'); row.style.transform = '';
+  const ids = [...$('#topen').querySelectorAll('.trow[data-tid]')].map(r => r.dataset.tid);
+  const before = openTodos().map(t => t.id).join();
+  if (ids.join() !== before) {
+    const map = Object.fromEntries(todoItems().map(t => [t.id, t]));
+    ids.forEach((id, i) => { if (map[id]) map[id].order = i; });
+    saveTodos();
+  }
+}
+V.todo.addEventListener('pointerup', endDrag);
+V.todo.addEventListener('pointercancel', endDrag);
+
 V.todo.addEventListener('submit', e => { e.preventDefault(); addTodo($('#tnew').value); });
 V.todo.addEventListener('click', e => {
-  const d = e.target.closest('[data-tdone]'); if (d) { completeTodo(d.dataset.tdone, d); return; }
+  if (e.target.closest('[data-grip]')) return;
+  const d = e.target.closest('[data-tdone]');
+  if (d) { if (editingTodo) finishEdit(true); const row = V.todo.querySelector(`.trow[data-tid="${d.dataset.tdone}"]`); if (row) completeTodo(d.dataset.tdone, row); return; }
+  const o = e.target.closest('[data-tedit-open]'); if (o) { editingTodo = o.dataset.teditOpen; keepScroll(renderTodo); return; }
   const u = e.target.closest('[data-tundo]');
-  if (u) { const t = todoItems().find(x => x.id === u.dataset.tundo); if (t) { delete t.done; saveTodos(); keepScroll(renderTodo); } return; }
+  if (u) { const t = todoItems().find(x => x.id === u.dataset.tundo); if (t) { delete t.done; const open = openTodos(); t.order = open.length ? tkey(open[0]) - 1 : 0; saveTodos(); keepScroll(renderTodo); } return; }
   const x = e.target.closest('[data-tdel]');
   if (x) { S.todos.items = todoItems().filter(t => t.id !== x.dataset.tdel); saveTodos(); keepScroll(renderTodo); return; }
   if (e.target.closest('[data-tclear]')) { S.todos.items = todoItems().filter(t => !t.done); saveTodos(); keepScroll(renderTodo); return; }
   if (e.target.closest('[data-tshow]')) { S.collapsed['todo-done'] = !S.collapsed['todo-done']; saveLocal(); keepScroll(renderTodo); }
 });
+V.todo.addEventListener('keydown', e => {
+  if (!e.target.matches('#tedit')) return;
+  if (e.key === 'Enter') { e.preventDefault(); finishEdit(true); }
+  if (e.key === 'Escape') { e.preventDefault(); finishEdit(false); }
+});
+V.todo.addEventListener('focusout', e => { if (e.target.matches('#tedit')) setTimeout(() => { if (editingTodo && document.activeElement !== $('#tedit')) finishEdit(true); }, 0); });
 
 function setTab(tab){
   S.tab = tab;
