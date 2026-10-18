@@ -257,6 +257,10 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 
 /* Column groups: stacked on phones, side by side on wide screens */
 .g-side,.g-main,.g-note,.ecols{display:flex;flex-direction:column;gap:18px;min-width:0}
+.g-left{display:contents}
+#v-today .g-side{order:1}
+#v-today .g-main{order:2}
+#v-today .g-note{order:3}
 .tabs .brand{display:none}
 
 /* Bottom nav */
@@ -288,11 +292,11 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
   .tabs button svg{width:24px;height:24px}
   .tabs .dot{top:12px;left:34px}
   /* Today: date, score and week on the left; habits on the right */
-  #v-today:not([hidden]),#v-history:not([hidden]){display:grid;grid-template-columns:minmax(320px,380px) minmax(0,1fr);grid-template-areas:"side main" "note main";
-    grid-template-rows:auto 1fr;column-gap:36px;row-gap:24px;align-items:start}
+  #v-today:not([hidden]),#v-history:not([hidden]){display:grid;grid-template-columns:minmax(320px,380px) minmax(0,1fr);grid-template-areas:"side main";column-gap:36px;row-gap:24px;align-items:start}
   .g-side{grid-area:side;position:sticky;top:32px}
+  #v-today .g-left{grid-area:side;display:flex;flex-direction:column;gap:24px;position:sticky;top:32px;max-height:calc(100vh - 64px);overflow-y:auto}
+  #v-today .g-left .g-side{position:static}
   .g-main{grid-area:main}
-  .g-note{grid-area:note}
   .tiles{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
   .tile:hover{border-color:var(--c)}
   /* History: check-in on the left, calendar on the right */
@@ -752,7 +756,7 @@ function renderToday(){
   }).join('');
   const anyTiny = S.config.habits.some(h => h.tiny);
 
-  V.today.innerHTML = `<div class="g-side">
+  V.today.innerHTML = `<div class="g-left"><div class="g-side">
     <div class="dayhead">
       <button class="iconbtn" data-step="-1" aria-label="Previous day">${I.left}</button>
       <div class="dayname"><h1>${rel}</h1><p>${rel===DOW[d.getDay()]?'':DOW[d.getDay()]+' '}${d.getDate()} ${MON[d.getMonth()]}${d.getFullYear()!==new Date().getFullYear()?' '+d.getFullYear():''}</p>
@@ -765,11 +769,11 @@ function renderToday(){
     </div>
     <div class="week">${week}</div>
     ${showCheckin ? '<button class="cta" data-goto="history">It’s Sunday. Do your weekly check-in</button>' : ''}
-    </div><div class="g-main">
+    </div><div class="g-note"><label class="note"><span class="eyebrow">Notes for this day</span>
+      <textarea id="note" placeholder="Plans, who you saw, how it went…">${esc(rec.n)}</textarea></label></div></div><div class="g-main">
     ${S.config.habits.length ? cats : '<p class="hint">No habits yet. Add some on the Habits tab.</p>'}
     ${anyTiny ? '<p class="hint">Press and hold a habit to log its two-minute version.</p>' : ''}
-    </div><div class="g-note"><label class="note"><span class="eyebrow">Notes for this day</span>
-      <textarea id="note" placeholder="Plans, who you saw, how it went…">${esc(rec.n)}</textarea></label></div>`;
+    </div>`;
 }
 
 function renderHistory(){
