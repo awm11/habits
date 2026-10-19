@@ -140,6 +140,12 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 .checkin.min .cihead h2{font-size:19px}
 .cibody{display:flex;flex-direction:column;gap:12px}
 .checkin.min .cibody{display:none}
+.checkin{overflow:hidden}
+.cistrip{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;margin:4px -16px -16px;border:0;border-top:1px solid var(--line);
+  background:var(--surface-2);color:var(--muted);font-weight:700;font-size:15px;width:calc(100% + 32px)}
+.cistrip svg{width:20px;height:20px}
+.cistrip:hover{color:var(--ink)}
+.checkin.due .cistrip{margin:4px -16px -16px}
 .checkin label{display:flex;flex-direction:column;gap:6px;font-weight:700}
 .wksum{margin:0;color:var(--muted)}
 .wksum b{color:var(--ink)}
@@ -909,7 +915,9 @@ function renderHistory(){
       <label for="rv-keep">What worked? Keep doing it<textarea id="rv-keep" data-rv="keep" placeholder="e.g. Walking after lunch">${esc(r.keep)}</textarea></label>
       <label for="rv-drop">What should you drop or pause?<textarea id="rv-drop" data-rv="drop" placeholder="e.g. Pause swimming until the pool reopens">${esc(r.drop)}</textarea></label>
       <label for="rv-easier">What would make one habit easier?<textarea id="rv-easier" data-rv="easier" placeholder="e.g. Leave the yoga mat out by the bed">${esc(r.easier)}</textarea></label>
-    </div></div></div><div class="g-main">
+    </div>
+    <button class="cistrip" data-cimin aria-expanded="${!S.collapsed.checkin}">${S.collapsed.checkin ? `${I.down}<span>Show check-in</span>` : `${I.up}<span>Minimise</span>`}</button>
+    </div></div><div class="g-main">
     <div class="monthhead">
       <button class="iconbtn" data-month="-1" aria-label="Previous month">${I.left}</button>
       <h1>${MON[m-1]}${y!==new Date().getFullYear()?' '+y:''}</h1>
