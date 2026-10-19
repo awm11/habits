@@ -126,7 +126,8 @@ h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
 .tile.pressing{transform:scale(.95);border-style:dashed;border-color:var(--c)}
 
 .note{display:flex;flex-direction:column;gap:8px}
-textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);padding:12px 14px;line-height:1.4}
+textarea{width:100%;min-height:88px;resize:none;overflow:hidden;field-sizing:content;max-height:70vh;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);padding:12px 14px;line-height:1.4}
+textarea.grown{overflow-y:auto}
 
 /* History + check-in */
 .checkin{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
@@ -228,8 +229,9 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 
 /* To do */
 .tadd{display:flex;gap:10px}
-.tadd input{flex:1;min-width:0;min-height:60px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);padding:0 16px;font-size:18px}
-.tadd input:focus{outline:none;border-color:var(--tick)}
+.tadd{align-items:flex-start}
+.tadd textarea{flex:1;min-width:0;min-height:60px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);padding:16px;font-size:18px;line-height:1.3}
+.tadd textarea:focus{outline:none;border-color:var(--tick)}
 .tadd button{min-width:60px;min-height:60px;border-radius:var(--r);border:0;background:var(--tick);color:var(--surface);font-size:30px;font-weight:700;line-height:1}
 .tlist{display:flex;flex-direction:column;gap:10px}
 .trow{position:relative;display:flex;align-items:stretch;min-height:66px;border-radius:var(--r);border:2px solid var(--line);background:var(--surface);
@@ -239,7 +241,7 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 .tdo:active .tck{transform:scale(.88);border-color:var(--tick)}
 .tck svg{width:22px;height:22px;opacity:0;transition:opacity .15s}
 .trow .tx{flex:1;min-width:0;border:0;background:none;text-align:left;padding:14px 4px;font-size:18px;font-weight:700;line-height:1.3;overflow-wrap:anywhere;cursor:text}
-.trow .tedit{flex:1;min-width:0;margin:8px 0;border:2px solid var(--tick);border-radius:10px;background:var(--bg);padding:8px 10px;font-size:18px;font-weight:700}
+.trow .tedit{min-height:0;line-height:1.3;flex:1;min-width:0;margin:8px 0;border:2px solid var(--tick);border-radius:10px;background:var(--bg);padding:8px 10px;font-size:18px;font-weight:700}
 .trow .tedit:focus{outline:none}
 .grip{flex:none;width:48px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .grip svg{width:22px;height:22px}
@@ -1062,14 +1064,14 @@ function renderTodo(){
     <div><h1 style="font-size:32px;font-weight:800;letter-spacing:-.02em">To do</h1>
       <p class="hint">${open.length ? `${open.length} to go. Tap the circle when one's done, tap the words to edit, drag the dots to reorder.` : 'All clear.'}</p></div>
     <form class="tadd" id="tform" autocomplete="off">
-      <input id="tnew" placeholder="Add a to-do…" aria-label="New to-do" enterkeyhint="done" maxlength="200">
+      <textarea id="tnew" rows="1" placeholder="Add a to-do…" aria-label="New to-do" enterkeyhint="done" maxlength="300"></textarea>
       <button type="submit" aria-label="Add to-do">+</button>
     </form>
     <div class="tlist" id="topen">${open.length ? open.map(t => `
       <div class="trow" data-tid="${t.id}">
         <button class="tdo" data-tdone="${t.id}" aria-label="Mark done: ${esc(t.text)}"><span class="tck">${TICK}</span></button>
         ${editingTodo === t.id
-          ? `<input class="tedit" id="tedit" data-tedit="${t.id}" value="${esc(t.text)}" maxlength="200" enterkeyhint="done" aria-label="Edit to-do">`
+          ? `<textarea class="tedit" id="tedit" rows="1" data-tedit="${t.id}" maxlength="300" enterkeyhint="done" aria-label="Edit to-do">${esc(t.text)}</textarea>`
           : `<button class="tx" data-tedit-open="${t.id}" aria-label="Edit: ${esc(t.text)}">${esc(t.text)}</button>`}
         <span class="grip" data-grip aria-hidden="true">${GRIP}</span>
       </div>`).join('')
@@ -1180,11 +1182,24 @@ V.todo.addEventListener('click', e => {
   if (e.target.closest('[data-tshow]')) { S.collapsed['todo-done'] = !S.collapsed['todo-done']; saveLocal(); keepScroll(renderTodo); }
 });
 V.todo.addEventListener('keydown', e => {
+  if (e.target.matches('#tnew') && e.key === 'Enter') { e.preventDefault(); addTodo(e.target.value); return; }
   if (!e.target.matches('#tedit')) return;
   if (e.key === 'Enter') { e.preventDefault(); finishEdit(true); }
   if (e.key === 'Escape') { e.preventDefault(); finishEdit(false); }
 });
 V.todo.addEventListener('focusout', e => { if (e.target.matches('#tedit')) setTimeout(() => { if (editingTodo && document.activeElement !== $('#tedit')) finishEdit(true); }, 0); });
+
+/* ---------- text boxes grow as you type ---------- */
+const FIT_CSS = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('field-sizing', 'content');
+function fitBox(el){
+  if (!el || el.tagName !== 'TEXTAREA' || !el.offsetParent) return;
+  if (!FIT_CSS) { el.style.height = 'auto'; el.style.height = (el.scrollHeight + el.offsetHeight - el.clientHeight) + 'px'; }
+  el.classList.toggle('grown', el.scrollHeight > el.clientHeight + 1);
+}
+const fitAll = () => document.querySelectorAll('textarea').forEach(fitBox);
+document.addEventListener('input', e => fitBox(e.target));
+new MutationObserver(() => requestAnimationFrame(fitAll)).observe(document.body, { childList:true, subtree:true });
+window.addEventListener('resize', fitAll);
 
 function setTab(tab){
   S.tab = tab;
