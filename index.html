@@ -133,6 +133,13 @@ textarea{width:100%;min-height:88px;resize:vertical;border-radius:var(--r);borde
 .checkin.due{border:2px solid var(--tick)}
 .checkin h2{font-size:24px;font-weight:800;letter-spacing:-.01em}
 .checkin textarea{min-height:64px;background:var(--bg)}
+.cihead{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:0;text-align:left;min-height:48px}
+.cihead .ht{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.cihead svg{flex:none;width:24px;height:24px;color:var(--muted);transition:transform .2s}
+.checkin.min .cihead svg{transform:rotate(-90deg)}
+.checkin.min .cihead h2{font-size:19px}
+.cibody{display:flex;flex-direction:column;gap:12px}
+.checkin.min .cibody{display:none}
 .checkin label{display:flex;flex-direction:column;gap:6px;font-weight:700}
 .wksum{margin:0;color:var(--muted)}
 .wksum b{color:var(--ink)}
@@ -822,15 +829,17 @@ function renderHistory(){
       ${pr.easier ? `<div><span>Make easier:</span> ${esc(pr.easier)}</div>` : ''}</div>`;
 
   V.history.innerHTML = `<div class="g-side">
-    <div class="checkin${isSun && reviewEmpty(r) ? ' due' : ''}">
-      <span class="eyebrow">Weekly check-in · week of ${shortDate(w)}</span>
-      <h2>${isSun ? 'How did this week go?' : 'Looking back at the week'}</h2>
+    <div class="checkin${isSun && reviewEmpty(r) ? ' due' : ''}${S.collapsed.checkin ? ' min' : ''}">
+      <button class="cihead" data-cimin aria-expanded="${!S.collapsed.checkin}">
+        <span class="ht"><span class="eyebrow">Weekly check-in · week of ${shortDate(w)}${S.collapsed.checkin ? (reviewEmpty(r) ? ' · not done yet' : ' · done ✓') : ''}</span>
+        <h2>${isSun ? 'How did this week go?' : 'Looking back at the week'}</h2></span>${I.down}</button>
+      <div class="cibody">
       <p class="wksum">${sumLine}</p>
       ${prevBlock}
       <label for="rv-keep">What worked? Keep doing it<textarea id="rv-keep" data-rv="keep" placeholder="e.g. Walking after lunch">${esc(r.keep)}</textarea></label>
       <label for="rv-drop">What should you drop or pause?<textarea id="rv-drop" data-rv="drop" placeholder="e.g. Pause swimming until the pool reopens">${esc(r.drop)}</textarea></label>
       <label for="rv-easier">What would make one habit easier?<textarea id="rv-easier" data-rv="easier" placeholder="e.g. Leave the yoga mat out by the bed">${esc(r.easier)}</textarea></label>
-    </div></div><div class="g-main">
+    </div></div></div><div class="g-main">
     <div class="monthhead">
       <button class="iconbtn" data-month="-1" aria-label="Previous month">${I.left}</button>
       <h1>${MON[m-1]}${y!==new Date().getFullYear()?' '+y:''}</h1>
@@ -1156,7 +1165,7 @@ V.today.addEventListener('click', e => {
   }
   const st = e.target.closest('[data-step]'); if (st) { S.day = addDays(S.day, +st.dataset.step); renderToday(); return; }
   const dd = e.target.closest('[data-day]'); if (dd) { S.day = dd.dataset.day; renderToday(); return; }
-  const go = e.target.closest('[data-goto]'); if (go) { setTab(go.dataset.goto); return; }
+  const go = e.target.closest('[data-goto]'); if (go) { if (go.dataset.goto === 'history' && S.collapsed.checkin) { S.collapsed.checkin = false; saveLocal(); } setTab(go.dataset.goto); return; }
   const col = e.target.closest('[data-collapse]');
   if (col) { const id = col.dataset.collapse; S.collapsed[id] = !S.collapsed[id]; saveLocal(); keepScroll(renderToday); }
 });
@@ -1180,6 +1189,7 @@ V.today.addEventListener('input', e => {
 
 /* ---------- events: History ---------- */
 V.history.addEventListener('click', e => {
+  if (e.target.closest('[data-cimin]')) { S.collapsed.checkin = !S.collapsed.checkin; saveLocal(); keepScroll(renderHistory); return; }
   const mb = e.target.closest('[data-month]');
   if (mb) { const [y,m] = S.histMonth.split('-').map(Number); const d = new Date(y, m-1 + (+mb.dataset.month), 1); S.histMonth = `${d.getFullYear()}-${pad(d.getMonth()+1)}`; keepScroll(renderHistory); return; }
   const dd = e.target.closest('[data-day]'); if (dd) goDay(dd.dataset.day);
