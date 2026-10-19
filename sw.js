@@ -1,6 +1,6 @@
 // Offline support for Daily Awesomeness.
 // The app page is fetched fresh when online (so updates arrive) and served from cache when offline.
-const APP_CACHE = 'awesomeness-app-v15';
+const APP_CACHE = 'awesomeness-app-v16';
 const FONT_CACHE = 'awesomeness-fonts-v1';
 const LIB_CACHE = 'awesomeness-libs-v1';
 const NET_TIMEOUT = 3000;   // how long to wait for the network before using the saved copy
@@ -55,7 +55,8 @@ self.addEventListener('fetch', event => {
   // The page itself: try the network for up to 3 seconds, then use the saved copy.
   // The download carries on in the background, so a slow update still arrives for next time.
   if (req.mode === 'navigate') {
-    const net = fetch(req).then(res => {
+    // 'no-cache' asks GitHub whether the page has changed instead of reusing the browser's 10-minute copy
+    const net = fetch(req.url, { cache:'no-cache', credentials:'same-origin' }).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(APP_CACHE).then(c => c.put('./index.html', copy)); }
       return res;
     });
