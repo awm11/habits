@@ -547,11 +547,92 @@ const FIREBASE_CONFIG = {
   appId: "1:617502759277:web:383cc66a3d7d07a506e264"
 };
 const FB_URL = 'https://www.gstatic.com/firebasejs/10.12.2/';
-const DIRTY_LS = LS + ':unsynced';
-const store = { m:null, auth:null, db:null, user:null, unsub:null, ready:false, timers:{}, writing:{}, ver:{}, dirty:new Set(), failed:false };
+const DIRTY_LS = LS + ':unsynced', BASE_LS = LS + ':base';
+const store = { m:null, auth:null, db:null, user:null, unsub:null, ready:false, timers:{}, writing:{}, ver:{}, dirty:new Set(), base:{}, failed:false, retry:null };
 try { (JSON.parse(localStorage.getItem(DIRTY_LS)) || []).forEach(id => store.dirty.add(id)); } catch(e) {}
+try { store.base = JSON.parse(localStorage.getItem(BASE_LS)) || {}; } catch(e) {}
 const saveDirty = () => { try { localStorage.setItem(DIRTY_LS, JSON.stringify([...store.dirty])); } catch(e) {} };
-const clone = o => JSON.parse(JSON.stringify(o));
+const saveBase = () => { try { localStorage.setItem(BASE_LS, JSON.stringify(store.base)); } catch(e) {} };
+const clone = o => o === undefined ? undefined : JSON.parse(JSON.stringify(o));
+
+/* ---------- merging two devices' edits ----------
+   Each device remembers the last version of every document it saw in the cloud (the "base").
+   When both this device and the cloud have changed since then, the changes are combined:
+   ticks, notes, to-dos, habits, groups and check-in answers are merged item by item.
+   Only when the very same field was changed differently on both does this device's version win. */
+const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+const stable = x => Array.isArray(x) ? '[' + x.map(stable).join(',') + ']'
+  : isObj(x) ? '{' + Object.keys(x).sort().map(k => JSON.stringify(k) + ':' + stable(x[k])).join(',') + '}' : JSON.stringify(x);
+const same = (a, b) => stable(a) === stable(b);
+function merge3(b, l, r){
+  if (same(l, r)) return l;
+  if (same(l, b)) return r;          // only the cloud changed
+  if (same(r, b)) return l;          // only this device changed
+  // a missing list (e.g. a day whose ticks were all removed) counts as an empty one
+  if ((Array.isArray(l) || Array.isArray(r)) && (l === undefined || Array.isArray(l)) && (r === undefined || Array.isArray(r)))
+    return mergeArr(Array.isArray(b) ? b : [], l || [], r || []);
+  if ((isObj(l) || l === undefined) && (isObj(r) || r === undefined) && (isObj(l) || isObj(r))) {
+    const L = l || {}, R = r || {}, B = isObj(b) ? b : {}, out = {};
+    for (const k of new Set([...Object.keys(L), ...Object.keys(R)])) { const v = merge3(B[k], L[k], R[k]); if (v !== undefined) out[k] = v; }
+    return out;
+  }
+  return l === undefined ? r : l;    // same field changed both ways: keep this device's
+}
+function mergeArr(b, l, r){
+  const prim = a => a.every(x => x === null || typeof x !== 'object');
+  if (prim(l) && prim(r) && prim(b)) {            // sets such as a day's ticks
+    const B = new Set(b), L = new Set(l), R = new Set(r);
+    const keep = x => (L.has(x) && R.has(x)) || (L.has(x) && !B.has(x)) || (R.has(x) && !B.has(x));
+    return [...new Set([...l, ...r])].filter(keep);
+  }
+  const ided = a => a.every(x => isObj(x) && typeof x.id === 'string');
+  if (ided(l) && ided(r)) {                       // habits, groups, to-dos: merge item by item
+    const map = a => new Map((ided(a) ? a : []).map(x => [x.id, x]));
+    const B = map(b), L = map(l), R = map(r), out = [];
+    for (const id of [...L.keys(), ...[...R.keys()].filter(k => !L.has(k))]) {
+      const bb = B.get(id), ll = L.get(id), rr = R.get(id);
+      if (ll && rr) { out.push(merge3(bb, ll, rr)); continue; }
+      const present = ll || rr;
+      if (bb === undefined) { out.push(present); continue; }   // newly added on one side
+      if (!same(present, bb)) out.push(present);              // deleted on one side but edited on the other: keep it
+    }
+    return out;
+  }
+  return l;
+}
+function tidyDays(days){
+  for (const [k, r] of Object.entries(days || {})) {
+    const d = [...new Set(r.d || [])], t = [...new Set(r.t || [])].filter(id => !d.includes(id));
+    if (!d.length && !t.length && !r.n) { delete days[k]; continue; }
+    const o = { d }; if (t.length) o.t = t; if (r.n) o.n = r.n; days[k] = o;
+  }
+  return days;
+}
+
+/* ---------- reading and writing one document of this device's data ---------- */
+function bodyFor(docId){
+  if (docId === 'config') return { v:S.config.v || 1, cats:S.config.cats, habits:S.config.habits };
+  if (docId === 'reviews') return { weeks:S.reviews.weeks };
+  if (docId === 'todos') return { items:(S.todos && S.todos.items) || [] };
+  return { days:(S.months[docId.slice(2)] || { days:{} }).days };
+}
+function applyBody(docId, data){
+  data = clone(data) || {};
+  if (docId === 'config') {
+    if (!Array.isArray(data.habits) || !Array.isArray(data.cats)) return false;
+    S.config = { v:data.v || 1, cats:data.cats, habits:data.habits };
+    if (migrate(S.config)) queueSave('config');
+  } else if (docId === 'reviews') S.reviews = { weeks:data.weeks || {} };
+  else if (docId === 'todos') { if (!Array.isArray(data.items)) return false; S.todos = { items:data.items }; }
+  else if (docId.startsWith('m-')) S.months[docId.slice(2)] = { days:tidyDays(data.days || {}) };
+  else return false;
+  return true;
+}
+function mergeBody(docId, base, local, remote){
+  const m = merge3(base, local, remote);
+  if (docId.startsWith('m-') && m && m.days) tidyDays(m.days);
+  return m;
+}
 
 // Every change is saved on the device straight away, and marked unsynced until the cloud confirms it.
 function queueSave(docId){
@@ -564,63 +645,62 @@ function queueSave(docId){
   clearTimeout(store.timers[docId]);
   store.timers[docId] = setTimeout(() => flush(docId), 700);
 }
-function bodyFor(docId){
-  if (docId === 'config') return { v:S.config.v || 1, cats:S.config.cats, habits:S.config.habits };
-  if (docId === 'reviews') return { weeks:S.reviews.weeks };
-  if (docId === 'todos') return { items:(S.todos && S.todos.items) || [] };
-  return { days:(S.months[docId.slice(2)] || { days:{} }).days };
-}
 const docRef = id => store.m.doc(store.db, 'users', store.user.uid, 'data', id);
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { code:'unavailable' })), ms))]);
+// Upload one document: read the cloud's copy, merge it with this device's, write the result — all in one transaction.
 async function flush(docId){
   if (!store.user || !store.ready) return;
-  if (store.writing[docId]) { store.timers[docId] = setTimeout(() => flush(docId), 300); return; }
+  if (store.writing[docId]) { clearTimeout(store.timers[docId]); store.timers[docId] = setTimeout(() => flush(docId), 400); return; }
   store.writing[docId] = true;
-  const v = store.ver[docId], who = store.user.uid;
+  const v = store.ver[docId], who = store.user.uid, local = clone(bodyFor(docId));
+  let merged;
   try {
-    await store.m.setDoc(docRef(docId), clone(bodyFor(docId)));
-    if (store.ver[docId] === v && store.user && store.user.uid === who) { store.dirty.delete(docId); saveDirty(); }
+    await withTimeout(store.m.runTransaction(store.db, async tx => {
+      const snap = await tx.get(docRef(docId));
+      const remote = snap.exists() ? clone(snap.data()) : undefined;
+      merged = remote === undefined ? local : mergeBody(docId, store.base[docId], local, remote);
+      tx.set(docRef(docId), merged);
+    }), 12000);
+    if (store.user && store.user.uid === who) {
+      store.base[docId] = clone(merged); saveBase();
+      if (store.ver[docId] === v) {
+        store.dirty.delete(docId); saveDirty();
+        if (!same(merged, local) && applyBody(docId, merged)) { saveLocal(); render(true); }
+      } else flush(docId);   // edited again while uploading: send the newer version too
+    }
     setSync(store.dirty.size ? 'syncing' : 'synced');
   } catch(e) {
-    setSync('error', e && e.code === 'permission-denied' ? 'The cloud refused the save. Your ticks are still on this device.' : null);
+    const code = e && e.code;
+    if (code === 'permission-denied') setSync('error', 'The cloud refused the save. Your ticks are still on this device.');
+    else { setSync(navigator.onLine ? 'error' : 'offline'); scheduleRetry(); }
   }
   store.writing[docId] = false;
 }
+function flushAll(){ if (store.user && store.ready) [...store.dirty].forEach(id => flush(id)); }
+function scheduleRetry(){ clearTimeout(store.retry); store.retry = setTimeout(flushAll, 15000); }
 function setSync(st, msg){ S.sync = st; S.syncMsg = msg || null; if (S.tab === 'edit') renderSyncLine(); }
 
-// First contact with the cloud on this device: combine both sides, then upload anything the cloud is missing.
+// First contact with the cloud this session: merge every document, then upload what the cloud is missing.
 function mergeFirst(cloud){
+  const ids = new Set([...Object.keys(cloud), ...store.dirty, 'config', 'reviews', 'todos', ...Object.keys(S.months).map(m => 'm-' + m)]);
   const up = new Set();
-  if (cloud.config && Array.isArray(cloud.config.habits) && !store.dirty.has('config')) {
-    S.config = { v:cloud.config.v || 1, cats:cloud.config.cats, habits:cloud.config.habits };
-    if (migrate(S.config)) up.add('config');
-  } else up.add('config');
-  const cw = (cloud.reviews && cloud.reviews.weeks) || {};
-  const weeks = store.dirty.has('reviews') ? { ...cw, ...S.reviews.weeks } : { ...S.reviews.weeks, ...cw };
-  if (JSON.stringify(weeks) !== JSON.stringify(cw)) up.add('reviews');
-  S.reviews = { weeks };
-  // To do: the cloud's list wins unless this device has unsynced changes, in which case both lists are combined.
-  const ct = cloud.todos && Array.isArray(cloud.todos.items) ? cloud.todos.items : null;
-  const lt = (S.todos && S.todos.items) || [];
-  if (ct && !store.dirty.has('todos')) S.todos = { items:ct };
-  else {
-    const byId = new Map((ct || []).map(t => [t.id, t]));
-    lt.forEach(t => byId.set(t.id, t));
-    S.todos = { items:[...byId.values()] };
-    if (JSON.stringify(S.todos.items) !== JSON.stringify(ct || [])) up.add('todos');
+  for (const id of ids) {
+    if (!(id === 'config' || id === 'reviews' || id === 'todos' || id.startsWith('m-'))) continue;
+    const remote = cloud[id], local = clone(bodyFor(id));
+    if (remote === undefined) { up.add(id); continue; }                         // cloud doesn't have it yet
+    if (store.dirty.has(id)) {
+      const merged = mergeBody(id, store.base[id], local, remote);
+      applyBody(id, merged);
+      if (!same(merged, remote)) up.add(id);
+    } else applyBody(id, remote);
+    store.base[id] = clone(remote);
   }
-  const months = new Set([...Object.keys(S.months), ...Object.keys(cloud).filter(k => k.startsWith('m-')).map(k => k.slice(2))]);
-  for (const m of months) {
-    const cd = (cloud['m-' + m] && cloud['m-' + m].days) || {}, ld = (S.months[m] && S.months[m].days) || {};
-    // Days changed on this device win; days only the cloud has are kept.
-    const days = store.dirty.has('m-' + m) ? { ...cd, ...ld } : { ...ld, ...cd };
-    S.months[m] = { days };
-    if (JSON.stringify(days) !== JSON.stringify(cd)) up.add('m-' + m);
-  }
-  [...store.dirty].forEach(id => up.add(id));
-  store.dirty = new Set(up); saveDirty();
+  saveBase();
+  store.dirty = new Set([...up].filter(id => !(id === 'reviews' && !Object.keys(S.reviews.weeks).length && !cloud.reviews)));
+  saveDirty();
   store.ready = true;
   saveLocal(); render(true);
-  if (up.size) { setSync('syncing'); up.forEach(id => flush(id)); } else setSync('synced');
+  if (store.dirty.size) { setSync('syncing'); flushAll(); } else setSync('synced');
 }
 function onSnap(snap){
   if (snap.metadata.fromCache && !store.ready) { setSync(navigator.onLine ? 'syncing' : 'offline'); return; }
@@ -629,26 +709,15 @@ function onSnap(snap){
   if (!store.ready) { mergeFirst(cloud); return; }
   let changed = false;
   for (const d of snap.docs) {
-    if (store.dirty.has(d.id) || d.metadata.hasPendingWrites) continue;
-    const data = cloud[d.id];
-    if (d.id === 'config') {
-      if (!Array.isArray(data.habits) || !Array.isArray(data.cats)) continue;
-      if (JSON.stringify(data) === JSON.stringify(bodyFor('config'))) continue;
-      S.config = { v:data.v || 1, cats:data.cats, habits:data.habits };
-      if (migrate(S.config)) queueSave('config');
-      changed = true;
-    } else if (d.id === 'reviews') {
-      if (JSON.stringify(data.weeks || {}) === JSON.stringify(S.reviews.weeks)) continue;
-      S.reviews = { weeks:data.weeks || {} }; changed = true;
-    } else if (d.id === 'todos') {
-      if (!Array.isArray(data.items) || JSON.stringify(data.items) === JSON.stringify((S.todos || {}).items || [])) continue;
-      S.todos = { items:data.items }; changed = true;
-    } else if (d.id.startsWith('m-')) {
-      const m = d.id.slice(2);
-      if (JSON.stringify(data.days || {}) === JSON.stringify((S.months[m] || {}).days || {})) continue;
-      S.months[m] = { days:data.days || {} }; changed = true;
-    }
+    if (d.metadata.hasPendingWrites) continue;
+    const remote = cloud[d.id];
+    // Unsynced edits here: leave them, the next upload merges with this cloud version.
+    if (store.dirty.has(d.id) || store.writing[d.id]) continue;
+    store.base[d.id] = clone(remote);
+    if (same(remote, bodyFor(d.id))) continue;
+    if (applyBody(d.id, remote)) changed = true;
   }
+  saveBase();
   if (changed) { saveLocal(); render(true); }
   if (!snap.metadata.fromCache && !store.dirty.size) setSync('synced');
 }
@@ -699,7 +768,8 @@ async function signIn(){
 async function signOut(){
   if (store.auth) await store.m.signOut(store.auth).catch(() => {});
 }
-window.addEventListener('online', () => { if (store.user && store.ready) store.dirty.forEach(id => flush(id)); });
+window.addEventListener('online', flushAll);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flushAll(); });
 window.addEventListener('offline', () => { if (store.user && store.dirty.size) setSync('offline'); });
 
 /* ---------- rendering ---------- */

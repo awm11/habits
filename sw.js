@@ -1,8 +1,10 @@
 // Offline support for Daily Awesomeness.
 // The app page is fetched fresh when online (so updates arrive) and served from cache when offline.
-const APP_CACHE = 'awesomeness-app-v13';
+const APP_CACHE = 'awesomeness-app-v14';
 const FONT_CACHE = 'awesomeness-fonts-v1';
 const LIB_CACHE = 'awesomeness-libs-v1';
+const NET_TIMEOUT = 3000;   // how long to wait for the network before using the saved copy
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 const APP_FILES = [
   './',
   './index.html',
@@ -35,7 +37,8 @@ self.addEventListener('fetch', event => {
     event.respondWith(caches.open(FONT_CACHE).then(async cache => {
       const hit = await cache.match(req);
       const fresh = fetch(req).then(res => { if (res.ok || res.type === 'opaque') cache.put(req, res.clone()); return res; }).catch(() => hit);
-      return hit || fresh;
+      event.waitUntil(fresh.catch(() => {}));
+      return hit || withTimeout(fresh, NET_TIMEOUT).catch(() => new Response('', { status:504 }));
     }));
     return;
   }
@@ -49,12 +52,16 @@ self.addEventListener('fetch', event => {
   }
   if (url.origin !== self.location.origin) return;
 
-  // The page itself: network first, cache when offline.
+  // The page itself: try the network for up to 3 seconds, then use the saved copy.
+  // The download carries on in the background, so a slow update still arrives for next time.
   if (req.mode === 'navigate') {
+    const net = fetch(req).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(APP_CACHE).then(c => c.put('./index.html', copy)); }
+      return res;
+    });
+    event.waitUntil(net.catch(() => {}));
     event.respondWith(
-      fetch(req)
-        .then(res => { const copy = res.clone(); caches.open(APP_CACHE).then(c => c.put('./index.html', copy)); return res; })
-        .catch(() => caches.match('./index.html'))
+      withTimeout(net, NET_TIMEOUT).catch(async () => (await caches.match('./index.html')) || net)
     );
     return;
   }
